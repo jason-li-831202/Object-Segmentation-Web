@@ -22,3 +22,4 @@ models/yolov8n-coco.onnx
 models/yolov8n-seg-coco.onnx
 models/yolov8s-seg-coco.onnx
 models/yolov8l-coco.onnx
+demo/demo-video.mp4
