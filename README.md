@@ -1,5 +1,5 @@
 <p align="center">
-  <img align="center" src="demo/title.jpg" height=70px>
+  <img align="center" src="./demo/title.jpg" height=70px>
 </p>
 
 <h1 align="center"> Object Segmentation Web using YoloV8 with Flask </h1>
@@ -19,7 +19,7 @@ After obtaining images through the camera, it is possible to separate the target
 4) [Demo](#Demo)
 
 <p align="center">
-    <img src="demo/demo-screen.jpg" width=700px>
+    <img src="./demo/demo-screen.jpg" width=700px>
 </p>
 
 
@@ -77,7 +77,7 @@ You can convert the Pytorch model to ONNX using the following Google Colab noteb
 
    After running, the config information will appear above the menu : 
 
-    [<div align=center><img src="demo/config-menu.jpg" width=250px></div>](demo/)
+    [<div align=center><img src="./demo/config-menu.jpg" width=250px></div>](demo/)
 
 * ***Run*** :
 
@@ -99,4 +99,4 @@ You can convert the Pytorch model to ONNX using the following Google Colab noteb
 
 * ***Display Switch***
 
-    ![!display switch](demo/demo-gif.gif)
+    ![!display switch](./demo/demo-gif.gif)
