@@ -1,0 +1,134 @@
+@import "css/switch.css";
+@import "css/slider.css";
+@import "css/inputbtn.css";
+@import "css/dropdown.css";
+@import "css/loadingspinner.css";
+@import "css/menubtn.css";
+@import "css/checkboxlist.css";
+
+/* * Reset all elements */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* * HTML elements */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 18px;
+    font-weight: normal;
+    line-height: 1.5em;
+    width: auto;
+    height: 100%;
+    margin: 0 auto;
+    background-color: #dce6ea;
+    opacity: 1;
+    background-image: radial-gradient(#dce6ea 2px, #d5dbe6 2px);
+    background-size: 40px 40px;
+    overflow-x: hidden;
+}
+
+h1.entry-title {
+    font-family:Arial;
+    text-align: center;
+    color: #e6e6e6;
+    text-shadow: 
+        0 0 10px #0eebff,
+        0 0 20px #0eebff,
+        0 0 50px #0eebff,
+        0 0 100px #0eebff,
+        0 0 200px #0eebff;
+}
+
+h2.entry-title {
+    font-family:Arial ;
+    text-align: center;
+    color: #dedddd;
+    text-shadow: 
+        0 0 10px rgb(62, 61, 61),
+        0 0 20px rgb(62, 61, 61),
+        0 0 50px rgb(62, 61, 61),
+        0 0 100px rgb(62, 61, 61),
+        0 0 200px rgb(62, 61, 61)
+}
+
+
+/* Header Title */
+#header{
+    padding: 5px;
+    text-align: center;
+    margin:5px;
+    opacity: 0.9;
+    box-shadow: 0 0 30px hsla(190, 40%, 15%, 0.6);
+    background: -webkit-linear-gradient(-5deg, rgb(18, 201, 237), rgb(69, 130, 100));
+    background: linear-gradient(-5deg, rgb(18, 201, 237), rgb(69, 130, 100));
+
+}
+
+#aside{
+    width: 400px;
+    max-height: -50%;
+    padding:20px 10px;
+    float: left;
+}
+
+h1.aside{
+    margin: 0;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, .4);
+    font-size: 1.8em;
+    text-align: center;
+}
+
+#section{
+    width: 800px;
+    /* margin-left: 28%; */
+    margin: auto;
+    text-align: center;
+}
+
+#footer{
+    /* margin: auto; */
+    padding:5px;
+    bottom: 0;
+    text-align: center;
+    line-height:10px;
+    background:-moz-linear-gradient(left, rgba(0,87,152,1) 0%, #425660 100%); 
+    background:-webkit-linear-gradient(left, rgba(0,87,152,1) 0%,#425660 100%); 
+    background:linear-gradient(to right, rgba(0,87,152,1) 0%,#425660 100%);
+    clear: both;
+}
+
+#container #videoElement {
+    /* width: auto; */
+    width: 100%;
+    margin: auto;
+    height: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+    background-color: black;
+    box-shadow: 0 0 30px hsla(240, 40%, 15%, 0.6);
+}
+
+#control {
+    margin-top: 40px;
+}
+
+#control em {
+    display: inline-block; 
+    height: 10px; 
+    font-size:15px;
+}
+
+input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    border: 0;
+}

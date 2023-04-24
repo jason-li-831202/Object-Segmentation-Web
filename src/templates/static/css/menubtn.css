@@ -1,0 +1,77 @@
+.modelMenu {
+	width: 350px;
+    height: 450px;
+	background-color: #355b5c69;
+	position: absolute;
+	right: 0;
+	border-left: 5px solid #0eebff;
+	padding: 10px;
+    border-radius: 6px 0 0 6px;
+	box-shadow: 0 0 20px hsla(240, 40%, 15%, 0.6);
+	transform: translateX(0);
+	transition: all 0.5s;
+    &.active {
+        transform: translateX(345px);
+    }
+}
+
+.modelView {
+    position: absolute;
+    top: 40%;
+    left: -12%;
+    padding: 40px 10px;
+    background-color: #0eebff;
+    border-radius: 6px 0 0 6px;
+    border-color: #01d3e6;
+    box-shadow: 0 0 20px hsla(240, 40%, 15%, 0.6);
+}
+
+.chevron-right{
+    width:1;
+    height:2;
+    border-top:5px solid #0cb8c7;
+    border-right:5px solid #0cb8c7;
+    transform: rotate(45deg);
+    outline: none;
+
+    padding: 5px 5px;
+    transition: all 0.5s;
+    &.rotate {
+      transform: rotate(225deg);
+    }
+    
+  }
+
+.title {
+    font-size: 24px;
+    color: #0eebff;
+}
+
+.list {
+    display: flex;
+
+}
+
+.optionTitle {
+    color: #0eebff;
+    font-size: 10px;
+}
+
+.optionList {
+    color: #fff;
+    text-size-adjust: auto;
+    font-size: 5px;
+}
+
+.optionTitle, .optionList {
+    display: block;
+    padding: 20px;
+    line-height: 2;
+    text-align: left;
+}
+
+.fas {
+    color: #fff;
+    outline: none;
+    border: none;
+}

@@ -1,0 +1,235 @@
+{% extends "bootstrap/base.html" %}
+{% block title %} {{ TITLE }} {% endblock %}
+{% block styles %} {{ super() }}
+
+
+<!-- Custom styles -->
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css"></link>
+{% endblock %}
+
+{% block content %}
+<!-- header title and describe -->
+<header id=header>
+  <h1 class="entry-title" ><i>{{ TITLE }}</i></h1>
+  <h1 class="entry-title" style="text-align: center;">
+    <img src="/static/icons/object.png" alt="" width="64" height="64" />&nbsp;&nbsp;
+    <img style="font-size: 14px; font-family: -webkit-standard;" src="/static/icons/detect.png" alt="" width="56" height="56" />&nbsp;&nbsp;
+    <img src="/static/icons/segmentation.png" alt="" width="64" height="64" />
+  </h1>
+</header>
+
+<aside id="aside">
+  <!-- <h1 class="aside">Target List</h1> -->
+  <div class="aside-container">
+    <h1>Target List</h1>
+    <div class="items">
+      {% for key, value in TARGETLIST.items() %}
+      <tr>
+          <input id="{{ key }}" type="checkbox" name="target" value="{{ key }}" checked>
+          <label  for="{{ key }}" >{{ key }}</label>
+      </tr>
+      {% endfor %}
+
+      
+      <h2 class="done" aria-hidden="true"><b>Display</b></h2>
+      <h2 class="undone" aria-hidden="true"><b>Hidden</b></h2>
+    </div>
+  </div>
+</aside>
+
+<!-- context -->
+<section id="section">
+
+  <!-- flask settings -->
+  <div class="modelMenu">
+    <button class="modelView">
+      <div class="chevron-right">
+      <!-- <i class="fas fa-2x"></i> -->
+      </div>
+    </button>
+
+    <div class="title">Cam Information</div>
+    <div class="list">
+      <ul class="optionTitle">
+        <p>Cam IP</p>
+        <p>Cam Height</p>
+        <p>Cam Width</p>
+      </ul>
+      <ul class="optionList">
+        <p>{{CAM_CONFIG["cam_id"]}}</p>
+        <p>{{CAM_CONFIG["height"]}}</p>
+        <p>{{CAM_CONFIG["width"]}}</p>
+      </ul>
+    </div>
+
+    <div class="title">Model Information</div>
+    <div class="list">
+      <ul class="optionTitle">
+        <p>Model Path</p>
+        <p>Class Path</p>
+        <p>Detect Score</p>
+        <p>Detect NMS</p> 
+        <p>Box Ratio</p> 
+        <p>Box Stretch</p> 
+      </ul>
+      <ul class="optionList">
+        <p>{{MODEL_CONFIG["model_path"]}}</p>
+        <p>{{MODEL_CONFIG["classes_path"]}}</p>
+        <p>{{MODEL_CONFIG["box_score"]}}</p>
+        <p>{{MODEL_CONFIG["box_nms_iou"]}}</p>
+        <p>{{MODEL_CONFIG["box_aspect_ratio"]}}</p>
+        <p>{{MODEL_CONFIG["box_stretch"]}}</p>
+      </ul>
+    </div>
+
+  </div>
+  
+  <h2 class="entry-title"><u> Real-time Object Segmentation using YOLOv8 and Flask </u></h2>
+  <h4 style="text-align: center; font-family: Trebuchet MS ; color: rgb(108, 107, 107);"> After obtaining images through the camera, it is possible to separate the target and background in the scene, and composite the target with a URL video background. </h4>
+
+  <div class="ring" id="spinner" style="display: none;" >
+    Loading
+    <span ></span>
+  </div>
+
+  <div id="container" align=center>
+    <img id="videoElement" src="{{ url_for('video_feed') }}" />
+
+    <!-- main btn -->
+    <table style="margin-top:10px;">
+        <tr>
+          <td>
+            <em> Open Cam : </em>
+            <label class="switch">
+              <input  type="checkbox" id="cam-preview" checked>
+              <span class="btnCyanSlider round"></span>
+            </label>
+          </td>
+          <td>
+            <em> Change BackGround : </em>
+            <label class="custom-search">
+              <input id="video-url" type="text" class="custom-search-input" placeholder="Enter Video Url or Local Path">
+              <button id="upload" class="custom-search-botton" type="submit">Submit</button>  
+            </label>
+            <label class="switch">
+              <input  type="checkbox" id="background-preview">
+              <span class="btnCyanSlider round"></span>
+            </label>
+          </td>
+        </tr>
+    </table>
+
+    <div>
+      <br>
+    </div>
+
+    <!-- zoom setting btn -->
+    <p>
+      <a  class="btn btn-primary" data-toggle="collapse"
+          style="background-color : #0eebff ; border:4px #04c9d7 double; font-size: 15px; border-radius: 10px; width:20%;"
+          href="#collapseExample" role="button" aria-expanded="false" aria-controls="collapseExample">
+        Options
+      </a>
+    </p>
+
+    <div class="collapse" id="collapseExample">
+      <div class="card card-body">
+        <form id="control">
+          <em> Flip Horizontal : </em>  
+            <label class="switch">
+              <input  type="checkbox" id="flip-horizontal" >
+              <span class="btnDarkGraySlider round"></span>
+            </label>
+          
+          <em> Display Mode : </em>
+            <label class="select-container">
+              <label class="select-box">
+                <label class="options-container">
+                  
+                  <div class="option">
+                    <input type="radio" class="radio" id="none" name="category" />
+                    <label for="none">None</label>
+                  </div>
+          
+                  <div class="option">
+                    <input type="radio" class="radio" id="basic" name="category" />
+                    <label for="basic">Basic Mode</label>
+                  </div>
+          
+                  <div class="option">
+                    <input type="radio" class="radio" id="detect" name="category" />
+                    <label for="detect">Detect Mode</label>
+                  </div>
+
+                  <div class="option">
+                    <input type="radio" class="radio" id="semantic" name="category" />
+                    <label for="semantic">Semantic Mode</label>
+                  </div>
+                </label>
+          
+                <label class="selected">
+                  Semantic Mode
+                </label>
+              </label>
+            </label>
+            
+          <br />
+
+          <em> Exposure : </em>  
+            <label class="slider">
+              <input id="exposure" type="range" min="-13" max="0" value="{{ CAM_CONFIG['exposure'] }}" oninput="exposure_value.value=value"/>
+              <output id="exposure_value">{{ CAM_CONFIG['exposure'] }}</output>
+            </label>
+
+          <br />
+          <br />
+
+          <em> Contrast : </em>  
+            <label class="slider">
+              <input id="contrast" type="range" min="0" max="100" value="{{ CAM_CONFIG['contrast'] }}" oninput="contrast_value.value=value"/>
+              <output id="contrast_value">{{ CAM_CONFIG['contrast'] }}</output>
+            </label>
+          <br />
+          <br />
+          <a id="reset-cam">
+            <button class="btn btn-danger" style="background-color : #d48b7e ; border:4px #d67968 double; font-size: 15px; border-radius: 10px; width:20%;">
+              Reset camera
+            </button>
+          </a>
+          
+        </form>
+      </div>
+    </div>
+
+    <div>
+      <br>
+    </div>
+
+  </div>
+
+</section>
+
+<!-- footer  -->
+<footer id="footer">
+  <figure>
+    <p style="text-align: center; display: inline-block;">© Taiwan 2023, built with </p>
+    <img src="/static/icons/github.png" alt="© Taiwan 2023, built with" width="26" height="26" >&nbsp;
+    <a href="https://github.com/jason-li-831202">https://github.com/jason-li-831202</a>
+  </figure>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<!-- Imports -->
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+
+<!-- Scripts -->
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='script.js') }}"
+>
+</script>
+
+{{ super() }}
+{% endblock %}

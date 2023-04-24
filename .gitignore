@@ -1,0 +1,24 @@
+### Python ###
+__pycache__/
+*.py[cod]
+*$py.class
+
+### Jupyter Notebook ###
+.ipynb_checkpoints
+
+### VSCode ###
+.vscode/
+
+### Virtual Environment ###
+env/
+
+### Metadata ###
+CamSettings.log
+
+*.weights
+models/yolov8m-coco.onnx
+models/yolov8m-seg-coco.onnx
+models/yolov8n-coco.onnx
+models/yolov8n-seg-coco.onnx
+models/yolov8s-seg-coco.onnx
+models/yolov8l-coco.onnx

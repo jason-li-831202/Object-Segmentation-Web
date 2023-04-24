@@ -1,0 +1,173 @@
+@import url(https://fonts.googleapis.com/css?family=Roboto:500,700);
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+.aside-container {
+  max-width: 450px;
+  height: 800px;
+  margin: 0 auto;
+  border-top: 5px solid #52cdd8;
+  /* background-color: rgba(255, 255, 255, .2); */
+  background-image: linear-gradient(120deg, #89f6fe53 0%, #66a6ff53 100%);
+  box-shadow: 0 0 20px rgba(0, 0, 0, .1);
+  user-select: none;
+  overflow-y: scroll;
+  scrollbar-width: thin;
+  --scrollbarBG: #CFD8DC;
+  --thumbBG: #52cdd8;
+  border-radius: 6px;
+  scrollbar-color: var(--thumbBG) var(--scrollbarBG);
+}
+
+.aside-container::-webkit-scrollbar {
+  width: 15px;
+}
+.aside-container::-webkit-scrollbar-track {
+  background: var(--scrollbarBG);
+}
+.aside-container::-webkit-scrollbar-thumb {
+  background-color: var(--thumbBG) ;
+  border-radius: 6px;
+  border: 3px solid var(--scrollbarBG);
+}
+
+.aside-container h1 {
+  margin: 0;
+  padding: 20px;
+  /* background-color: rgba(255, 255, 255, .4); */
+  font-size: 1.8em;
+  text-align: center;
+  color: #06808b;
+  text-shadow: 
+  0 0 10px #0eebff,
+  0 0 20px #0eebff,
+  0 0 50px #0eebff,
+  0 0 100px #0eebff,
+  0 0 150px #0eebff;
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  color: #0d565d;
+  counter-reset: done-items undone-items;
+}
+
+.aside-container h2 {
+  position: relative;
+  margin: 0;
+  padding: 10px 0;
+  font-size: 1.2em;
+  color: #06808b;
+}
+
+.aside-container h2::before {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: -20px;
+  width: 5px;
+  background-color: #435757;
+}
+
+.aside-container h2::after {
+  display: block;
+  float: right;
+  font-weight: normal;
+}
+
+.done {
+  order: 1;
+}
+
+.done::after {
+  content: ' (' counter(done-items) ')';
+}
+
+.undone {
+  order: 3;
+}
+
+.undone::after {
+  content: ' (' counter(undone-items) ')';
+}
+
+/* hide inputs offscreen, but at the same vertical positions as the correpsonding .aside-container labels, so that tabbing scrolls the viewport as expected */
+.items input {
+  display: block;
+  height: 53px;
+  margin: 0 0 -53px -9999px;
+  order: 4;
+  outline: none;
+  font-size: 50px;
+  counter-increment: undone-items;
+}
+
+.items input:checked {
+  order: 2;
+  counter-increment: done-items;  
+}
+
+.items label {
+  position: relative;
+  padding: 8px 0 15px 45px;
+  border-top: 1px dashed #ffffff;
+  order: 4;
+  cursor: pointer;
+  
+  animation: undone .5s;
+}
+
+.items label::before { 
+  /* circle outline */
+  content: '\f10c'; 
+  display: block;
+  position: absolute;
+  top: 11px;
+  left: 10px;
+  font: 1.5em 'FontAwesome';
+}
+
+.items label:hover, .items input:focus + label {
+  background-color: rgba(255, 255, 255, .2);
+}
+
+.items input:checked + label {
+  order: 2;
+  animation: done .5s;
+}
+
+
+.items input:checked + label::before {
+  /* circle checkmark */
+  content: '\f058'; 
+}
+
+@keyframes done {
+  0% {
+    opacity: 0;
+    background-color: rgba(255, 255, 255, .4);
+    transform: translateY(20px);
+  }
+  50% {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, .4);
+  }
+}
+
+@keyframes undone {
+  0% {
+    opacity: 0;
+    background-color: rgba(255, 255, 255, .4);
+    transform: translateY(-20px);
+  }
+  50% {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, .4);
+  }
+}
