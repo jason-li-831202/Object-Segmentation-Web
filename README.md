@@ -77,7 +77,7 @@ You can convert the Pytorch model to ONNX using the following Google Colab noteb
 
    After running, the config information will appear above the menu : 
 
-    [<div align=center><img src="./demo/config-menu.jpg" width=250px></div>](demo/)
+    [<div style="padding-left:70px;"><img src="./demo/config-menu.png" width=250px></div>](demo/)
 
 * ***Run*** :
 
