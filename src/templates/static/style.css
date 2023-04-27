@@ -82,6 +82,8 @@ h1.aside{
 }
 
 #section{
+    /* background-color: black; */
+    /* width: auto; */
     width: 800px;
     /* margin-left: 28%; */
     margin: auto;
@@ -112,6 +114,7 @@ h1.aside{
     box-shadow: 0 0 30px hsla(240, 40%, 15%, 0.6);
 }
 
+
 #control {
     margin-top: 40px;
 }
@@ -131,4 +134,25 @@ input[type="file"] {
     overflow: hidden;
     clip: rect(0,0,0,0);
     border: 0;
+}
+
+.download {
+    background: url(/static/icons/screenshot.png) no-repeat scroll center center / 100% auto;
+    border:none;
+    content: "";
+    display: inline-block;
+    color: #fff;
+    width: 50px;
+    height: 50px;
+    margin-right: 13px;
+    position: relative;
+    top: -2px;
+    vertical-align: middle;
+ }
+
+ 
+.download:hover {
+width: 55px;
+height: 55px;
+border-radius: 5px;
 }

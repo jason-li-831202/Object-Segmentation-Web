@@ -70,3 +70,50 @@ input:checked + .btnDarkGraySlider:before, input:checked + .btnCyanSlider:before
 .btnDarkGraySlider.round:before, .btnCyanSlider.round:before {
   border-radius: 50%;
 }
+
+
+/* The Icon switch*/
+.switch-icon {
+  border:none;
+  content: "";
+  display: inline-block;
+  color: #fff;
+  width: 45px;
+  height: 45px;
+  margin-right: 13px;
+  position: relative;
+  top: 0px;
+  vertical-align: middle;
+}
+
+/* Hide default HTML checkbox */
+.switch-icon input {
+  opacity: 0;
+  width: 0;
+  height: 15px;
+}
+
+.btnIconSlider {
+  background: url(/static/icons/bg.png) no-repeat scroll center center / 100% auto;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  position: absolute;
+  cursor: pointer;
+}
+
+input[type=checkbox]:hover + .btnIconSlider {
+  width: 50px;
+  height: 50px;
+  border-radius: 5px;
+}
+
+input[type=checkbox] + .btnIconSlider {
+  background: url(/static/icons/bg.png) no-repeat scroll center center / 100% auto;
+
+}
+
+input[type=checkbox]:checked + .btnIconSlider {
+  background: url(/static/icons/pruning-bg.png) no-repeat scroll center center / 100% auto;
+}

@@ -91,12 +91,15 @@
     <span ></span>
   </div>
 
-  <div id="container" align=center>
+  <div id="capture" align=center>
     <img id="videoElement" src="{{ url_for('video_feed') }}" />
+  </div>
 
+  <div id="container" align=center>
     <!-- main btn -->
-    <table style="margin-top:10px;">
+    <table style="margin-top:10px; width: 800px;">
         <tr>
+
           <td>
             <em> Open Cam : </em>
             <label class="switch">
@@ -104,16 +107,22 @@
               <span class="btnCyanSlider round"></span>
             </label>
           </td>
+
           <td>
             <em> Change BackGround : </em>
             <label class="custom-search">
               <input id="video-url" type="text" class="custom-search-input" placeholder="Enter Video Url or Local Path">
               <button id="upload" class="custom-search-botton" type="submit">Submit</button>  
             </label>
-            <label class="switch">
-              <input  type="checkbox" id="background-preview">
-              <span class="btnCyanSlider round"></span>
+
+          </td>
+          
+          <td>
+            <label class="switch-icon">
+              <input type="checkbox" id="background-preview">
+              <span class="btnIconSlider"></span>
             </label>
+            <button class="download" onclick="blockCapture()"></button>
           </td>
         </tr>
     </table>
@@ -221,6 +230,7 @@
 {% block scripts %}
 <!-- Imports -->
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
 <!-- Scripts -->
 <script

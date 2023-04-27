@@ -16,6 +16,15 @@ function initSliderPosition(input_id){
   return val;
 }
 
+function blockCapture() {
+  html2canvas(document.querySelector("#capture")).then(function (canvas) {
+      a = document.createElement('a');
+      a.href = canvas.toDataURL("image/jpeg", 0.92).replace("image/jpeg", "image/octet-stream");
+      a.download = 'screenshot.jpg';
+      a.click();
+  });
+}
+
 function sliderChangeHandler(e) {
   target = document.getElementById(e.target.id)
 
@@ -126,7 +135,6 @@ $(function () {
     } 
     catch (error)
     {
-      // var btn = document.getElementById("background-preview");
       this.checked = false;
       alert("URL parsing error, can't click it.");
     }
