@@ -9,6 +9,7 @@ Web application for real-time object segmentation using Flask , [YOLOv8](https:/
 
 After obtaining images through the camera, it is possible to separate the target and background in the scene, and composite the target with a Web URL/Local Path video background.
 
+
 # ➤ Contents
 1) [Requirements](#Requirements)
 
@@ -22,8 +23,7 @@ After obtaining images through the camera, it is possible to separate the target
     <img src="./demo/demo-screen.jpg" width=700px>
 </p>
 
-
-# ➤ Requirements
+<h1 id="Requirements">➤ Requirements</h1>
 
 * **OpenCV**, **Flask**, **gevent**, **onnxruntime** and **youtube-dl**. 
 * **Install :**
@@ -51,12 +51,14 @@ After obtaining images through the camera, it is possible to separate the target
     - > <strike>`self._dislikes = self._ydl_info['dislike_count']`</strike>
 
 
-# ➤ ONNX-model
+<h1 id="ONNX-Model">➤ ONNX-model</h1>
+
 You can convert the Pytorch model to ONNX using the following Google Colab notebook:  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1oDEKz8FUCXtW-REhWy5N__PgTPjt3jm9?usp=sharing)
 - The License of the models is GPL-3.0 license: [License](https://github.com/ultralytics/ultralytics/blob/master/LICENSE)
 
 
-# ➤ Examples
+<h1 id="Examples">➤ Examples</h1>
+
 * ***Setting Config*** :
     ```python
     model_config = {
@@ -93,8 +95,8 @@ You can convert the Pytorch model to ONNX using the following Google Colab noteb
     | `DisplayType.DETECT_MODE`     | Separate the target box and background on image.                |
     | `DisplayType.SEMANTIC_MODE`   | Separate the target segmentation and background on image.       | 
 
+<h1 id="Demo">➤ Demo</h1>
 
-## ➤ Demo
 * [***Demo Youtube Video***](https://www.youtube.com/watch?v=_AV-B7XFRZU&feature=youtu.be)
 
 * ***Display Switch***
