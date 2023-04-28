@@ -111,7 +111,7 @@
           <td>
             <em> Change BackGround : </em>
             <label class="custom-search">
-              <input id="video-url" type="text" class="custom-search-input" placeholder="Enter Video Url or Local Path">
+              <input id="video-url" type="text" class="custom-search-input" placeholder="Enter Url or Video/Image Local Path">
               <button id="upload" class="custom-search-botton" type="submit">Submit</button>  
             </label>
 
@@ -197,8 +197,19 @@
               <input id="contrast" type="range" min="0" max="100" value="{{ CAM_CONFIG['contrast'] }}" oninput="contrast_value.value=value"/>
               <output id="contrast_value">{{ CAM_CONFIG['contrast'] }}</output>
             </label>
+
           <br />
           <br />
+
+          <em> BlurRate : </em>  
+          <label class="slider">
+            <input id="blur" type="range" min="0" max="100" value="{{ CAM_CONFIG['blur'] }}" oninput="blur_value.value=value"/>
+            <output id="blur_value">{{ CAM_CONFIG['blur'] }}</output>
+          </label>
+          
+          <br />
+          <br />
+
           <a id="reset-cam">
             <button class="btn btn-danger" style="background-color : #d48b7e ; border:4px #d67968 double; font-size: 15px; border-radius: 10px; width:20%;">
               Reset camera
@@ -229,7 +240,7 @@
 
 {% block scripts %}
 <!-- Imports -->
-<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
 <!-- Scripts -->

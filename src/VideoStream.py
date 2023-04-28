@@ -2,6 +2,7 @@ import time
 import cv2, os
 import numpy as np
 import pafy
+from PIL import Image, ImageSequence
 from enum import Enum
 
 from src.ObjectDetector import ObjectOnnxDetector
@@ -11,23 +12,52 @@ class DisplayType(Enum):
 	BASIC_MODE = "Basic Mode"
 	DETECT_MODE = "Detect Mode"
 	SEMANTIC_MODE = "Semantic Mode"
-        
+
+class imageCapture() :
+    def __init__(self, filename) -> None:
+        self.img  = cv2.imread(filename)
+        self.type = "image"
+        if self.img is None :
+            gif = Image.open(filename)
+            self.img = []                                      
+            self.gif_index = 0
+            for frame in ImageSequence.Iterator(gif):
+                red, green, blue, alpha = np.array(frame.convert('RGBA')  ) .T
+                data = np.array([blue, green, red])        
+                self.img.append(data.transpose())         
+            self.type = "gif"
+
+    def read(self):
+        if (self.type == "gif") :
+            current_index = self.gif_index
+            self.gif_index += 1
+            if (self.gif_index == len(self.img)) :
+                self.gif_index = 0
+            return True, np.array(self.img[current_index])
+        else :
+            if self.img is None :
+                return False, self.img
+            else :
+                return True, self.img
+                 
 class VideoStreaming(object):
     def __init__(self, cam_config=None, model_config=None):
         super(VideoStreaming, self).__init__()
         self.cam_config = cam_config
+        self.cam_config['blur'] = 0
         if (cam_config == None) :
             raise Exception("cam_config setting is %s." % cam_config)
-        
+
         if (model_config == None) :
             raise Exception("model_config setting is %s." % model_config)
         
         self.CAM = cv2.VideoCapture(self.cam_config['cam_id'])
         if (not self.CAM.isOpened()) :
             raise Exception("video root [%s] is error. please check it." % self.cam_config['cam_id'])
-        self.VIDEO = None
+        self.BG = None
         self._exposure = None
         self._contrast = None
+        self._blur = None
         self.InitCamSettings()
 
         ObjectOnnxDetector.set_defaults(model_config)
@@ -46,6 +76,10 @@ class VideoStreaming(object):
         self._exposure = self.cam_config['exposure']
         self.CAM.set(cv2.CAP_PROP_CONTRAST, self.cam_config['contrast'])
         self._contrast = self.cam_config['contrast']
+
+        blur_range = range(1, 203, 2)
+        self.blur_dict = {i:blur_range[i]  for i in range(len(blur_range))}
+        self._blur = self.blur_dict[self.cam_config['blur']]
         self.H = self.CAM.get(cv2.CAP_PROP_FRAME_HEIGHT)
         self.W = self.CAM.get(cv2.CAP_PROP_FRAME_WIDTH)
         for key in self.cam_config:
@@ -104,24 +138,40 @@ class VideoStreaming(object):
         self._contrast = value
         self.CAM.set(cv2.CAP_PROP_CONTRAST, self._contrast)
 
-    def setVideoBackGround(self, url):
+    @property
+    def blur(self):
+        return self._blur
+
+    @blur.setter
+    def blur(self, value):
+        self._blur = self.blur_dict[value]
+
+    def setBackGround(self, url):
         start = time.time()
-        try :
-            root, extension = os.path.splitext(url)
-            if extension in {".mp4", ".m4v", ".mkv", ".mov", ".avi", ".wmv", ".flv" }:
-                self.VIDEO = cv2.VideoCapture(url)
+
+        root, extension = os.path.splitext(url)
+        if extension in {".mp4", ".m4v", ".mkv", ".mov", ".avi", ".wmv", ".flv" }:
+            if os.path.isfile(url):
+                self.BG = cv2.VideoCapture(url)
             else :
+                print("File don't exist.")
+        elif extension in {".png", ".PNG", ".jpg", ".jpeg", ".gif", ".bmp", ".tif" }:
+            if os.path.isfile(url):
+                self.BG = imageCapture(url)
+            else :
+                print("File don't exist.")
+        else :
+            try :
                 video = pafy.new(url)
                 best = video.getbest(preftype="mp4")
-                self.VIDEO = cv2.VideoCapture(best.url)
-        except OSError :
-            print("You need to revise [your path]\site-packages\youtube_dl\extractor\youtube.py : ['uploader_id': self._search_regex(r'/(?:channel|user)/([^/?&#]+)', owner_profile_url, 'uploader id') if owner_profile_url else None,] to \
-                  ['uploader_id': self._search_regex(r'/(?:channel/|user/|@)([^/?&#]+)', owner_profile_url, 'uploader id', default=None),] ")
-        except KeyError:
-            print("You need to comment out [your path]\site-packages\pafy\backend_youtube_dl.py : [self._likes = self._ydl_info['like_count'] and [self._dislikes = self._ydl_info['dislike_count']")
-        except :
-            print("Invalid URL escape while parsing URL")
-            return 
+                self.BG = cv2.VideoCapture(best.url)
+            except OSError :
+                print("You need to revise [your path]\site-packages\youtube_dl\extractor\youtube.py : ['uploader_id': self._search_regex(r'/(?:channel|user)/([^/?&#]+)', owner_profile_url, 'uploader id') if owner_profile_url else None,] to \
+                    ['uploader_id': self._search_regex(r'/(?:channel/|user/|@)([^/?&#]+)', owner_profile_url, 'uploader id', default=None),] ")
+            except KeyError:
+                print("You need to comment out [your path]\site-packages\pafy\backend_youtube_dl.py : [self._likes = self._ydl_info['like_count'] and [self._dislikes = self._ydl_info['dislike_count']")
+            except :
+                print("Invalid URL escape while parsing URL")
 
         end = time.time()
         print("loading background time (sec) : ", round(end-start, 2) )
@@ -132,10 +182,11 @@ class VideoStreaming(object):
     def show(self):
         while(self.CAM.isOpened()):
             ret, snap = self.CAM.read()
-            if (self._background and self.VIDEO != None):
-                gt_ret, snap_bg = self.VIDEO.read()
+            if (self._background and self.BG != None):
+                gt_ret, snap_bg = self.BG.read()
                 if gt_ret == True:
                     snap_bg = cv2.resize(snap_bg, (int(self.W), int(self.H)))
+                    snap_bg = cv2.GaussianBlur(snap_bg,(self._blur, self._blur), cv2.BORDER_DEFAULT)
                 else :
                     snap_bg = np.zeros((
                         int(self.CAM.get(cv2.CAP_PROP_FRAME_HEIGHT)),

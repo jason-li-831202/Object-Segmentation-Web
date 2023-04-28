@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, Response, redirect, url_for
+from flask import Flask, render_template, request, Response, redirect, url_for, jsonify
 from flask_bootstrap import Bootstrap
 from gevent import monkey
 from gevent.pywsgi import WSGIServer
@@ -28,8 +28,8 @@ application = Flask(__name__,
 Bootstrap(application)
 
 
-VIDEO = VideoStreaming(cam_config=cam_config, model_config=model_config)
 
+VIDEO = VideoStreaming(cam_config=cam_config, model_config=model_config)
 
 @application.route('/')
 def home():
@@ -83,7 +83,7 @@ def request_background_video():
     print('*'*10)
     print("video url or path :", url)
     print('*'*10)
-    VIDEO.setVideoBackGround(url)
+    VIDEO.setBackGround(url)
     return "nothing"
 
 @application.route('/request_background_switch')
@@ -127,6 +127,15 @@ def request_contrast():
     VIDEO.contrast = int(value)
     print('*'*10)
     print("display contrast :",VIDEO.contrast)
+    print('*'*10)
+    return "nothing"
+
+@application.route('/request_blur')
+def request_blur():
+    value  = request.args.get('value')
+    VIDEO.blur = int(value)
+    print('*'*10)
+    print("display blur (kernel):",VIDEO.blur)
     print('*'*10)
     return "nothing"
 

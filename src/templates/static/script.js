@@ -47,6 +47,10 @@ function sliderClickHandler(e){
     $.get("/request_contrast", {'value': target.value}, function() {
       return
     });
+  }else if (target.id == "blur"){
+    $.get("/request_blur", {'value': target.value}, function() {
+      return
+    });
   }
 
 }
@@ -98,7 +102,7 @@ $(function () {
       spinner.style.display = "block";
       const url = new URL(inputUrl.value);
       // alert("url path :" + inputUrl.value);
-      $.get("/request_background_video", {'url': inputUrl.value}, function() {
+      $.get("/request_background_video", {'url': inputUrl.value}, function(response) {
         spinner.style.display = 'none'; 
         return
       });
@@ -175,6 +179,12 @@ $(function () {
     var contrast_value = document.getElementById("contrast_value");
     contrast_value.value = contrast.value;
     initSliderPosition("contrast");
+    // init blur
+    var blur = document.getElementById("blur");
+    blur.value = default_blur;
+    var blur_value = document.getElementById("blur_value");
+    blur_value.value = blur.value;
+    initSliderPosition("blur");
     // init flip switch
     var flip = document.getElementById("flip-horizontal"); 
     flip.checked = false;
@@ -222,6 +232,7 @@ $(function () {
   // Use Slider Listener
   var default_exposure = initSliderPosition("exposure");
   var default_contrast = initSliderPosition("contrast");
+  var default_blur = initSliderPosition("blur");
   const rangeInputs = document.querySelectorAll('input[type="range"]')
   const numberInput = document.querySelector('input[type="number"]')
 
