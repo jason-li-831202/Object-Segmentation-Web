@@ -20,7 +20,7 @@ After obtaining images through the camera, it is possible to separate the target
 4) [Demo](#Demo)
 
 <p align="center">
-    <img src="./demo/demo-title.jpg" width=700px>
+    <img src="./demo/demo-screen.jpg" width=700px>
 </p>
 
 <h1 id="Requirements">➤ Requirements</h1>
