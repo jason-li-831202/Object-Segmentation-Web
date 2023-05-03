@@ -20,7 +20,7 @@ After obtaining images through the camera, it is possible to separate the target
 4) [Demo](#Demo)
 
 <p align="center">
-    <img src="./demo/demo-screen.jpg" width=700px>
+    <img src="./demo/demo-title.jpg" width=700px>
 </p>
 
 <h1 id="Requirements">➤ Requirements</h1>
@@ -106,5 +106,5 @@ You can convert the Pytorch model to ONNX using the following Google Colab noteb
 * ***Display Style Switch***
 
     <p>
-        <img src="./demo/demo-displayStyle.Jfif" width=600px>
+        <img src="./demo/demo-displayStyle.jpg" width=600px>
     </p>
