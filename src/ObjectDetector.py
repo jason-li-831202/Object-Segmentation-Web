@@ -48,6 +48,7 @@ class ObjectOnnxDetector(object):
         self.__dict__.update(kwargs) # and update with user overrides
         self.box_points = []
         self.mask_maps = []
+        self.style = None
         self.keep_ratio = False
 
         classes_path = os.path.expanduser(self.classes_path)
@@ -291,6 +292,9 @@ class ObjectOnnxDetector(object):
                 results.append([ymin, xmin, ymax, xmax, predicted_class])
         return results, indices
 
+    def SetDisplayStyle(self, engine) :
+        self.style = engine
+
     def SetDisplayTarget(self, targets) :
         self.priority_target = targets
 
@@ -317,6 +321,8 @@ class ObjectOnnxDetector(object):
             self.mask_maps = self._process_mask_output(output_from_network[1], unscaled_xyxy_boxes, mask_pred, indices)
 
     def DrawIdentifyOnFrame(self, frame_show, mask_alpha=0.3, detect=True, seg=False) :
+        if (self.style != None) :
+            frame_show = self.style(frame_show)
         mask_img = frame_show.copy()
 
         if ( len(self.box_points) != 0 )  :
@@ -344,17 +350,25 @@ class ObjectOnnxDetector(object):
                 snap = np.zeros(( int(frame_show.shape[0]), int(frame_show.shape[1]), 3 ), np.uint8)
                 ymin, xmin, ymax, xmax, label = box
                 if (label in self.priority_target ) :
-                    if (detect) :
-                        frame_show[ymin:ymax, xmin:xmax] = frame_overlap[ymin:ymax, xmin:xmax]
 
+                    mask_box_img = frame_overlap[ymin:ymax, xmin:xmax]
+                    if (self.style != None) :
+                        mask_box_img = self.style(mask_box_img)
+
+                    if (detect) :    
+                        frame_show[ymin:ymax, xmin:xmax] = mask_box_img
+                    else :
+                        frame_overlap[ymin:ymax, xmin:xmax] = mask_box_img
+
+                    # Draw fill mask image
                     if (seg and self.mask_maps!= []):
-                        # Draw fill mask image
                         crop_mask = self.mask_maps[index][ymin:ymax, xmin:xmax, np.newaxis]
                         crop_mask_img = mask_binaray[ymin:ymax, xmin:xmax]
 
                         snap[ymin:ymax, xmin:xmax] = crop_mask_img * (1 - crop_mask) + crop_mask
                         mask_binaray += snap
-
+            # cv2.imshow("test :", frame_show)
+            # cv2.waitKey(33)
             if (seg and self.mask_maps!= []):
                 mask_img[mask_binaray[:,:,0] >= 1] = [0, 0, 0]
                 frame_overlap[mask_binaray[:,:,0] < 1] = [0, 0, 0]

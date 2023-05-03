@@ -44,7 +44,12 @@ def home():
             MODLE_CONFIG[key] = os.path.basename(value)
 
     CLASSES_CONFIG = VIDEO.MODEL.colors_dict.copy()
-    return render_template('index.html', TITLE=TITLE, CAM_CONFIG = CAM_CONFIG, MODEL_CONFIG = MODLE_CONFIG, TARGETLIST=CLASSES_CONFIG)
+    STYLE_CONFIG = VIDEO.style_dict.copy()
+    return render_template('index.html', TITLE=TITLE, 
+                                        CAM_CONFIG = CAM_CONFIG, 
+                                        MODEL_CONFIG = MODLE_CONFIG, 
+                                        TARGETLIST = CLASSES_CONFIG,
+                                        STYLELIST = STYLE_CONFIG)
 
 @application.route('/video_feed')
 def video_feed():
@@ -108,6 +113,15 @@ def request_model_switch():
     VIDEO.detect = type
     print('*'*10)
     print("display type :",  type)
+    print('*'*10)
+    return "nothing"
+
+@application.route('/request_style_switch')
+def request_style_switch():
+    type  = request.args.get('type')
+    VIDEO.setViewStyle(type)
+    print('*'*10)
+    print("display style :",  type)
     print('*'*10)
     return "nothing"
 

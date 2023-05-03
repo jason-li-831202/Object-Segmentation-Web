@@ -4,10 +4,10 @@
 
 <h1 align="center"> Object Segmentation Web using YoloV8 with Flask </h1>
 
-Web application for real-time object segmentation using Flask , [YOLOv8](https://github.com/ultralytics/ultralytics) model in ONNX weights.
+Web application for real-time object segmentation using Flask , [YOLOv8](https://github.com/ultralytics/ultralytics), [AnimeGANv2/v3](https://github.com/TachibanaYoshino/AnimeGANv2) model in ONNX weights.
 
 
-After obtaining images through the camera, it is possible to separate the target and background in the scene, and composite the target with a Web URL/Local Path video background.
+After obtaining images through the camera, it is possible to separate the target and background in the scene, and composite the target with a Web URL/Local Path video background. Additionally, you can change different display styles.
 
 
 # ➤ Contents
@@ -99,6 +99,12 @@ You can convert the Pytorch model to ONNX using the following Google Colab noteb
 
 * [***Demo Youtube Video***](https://www.youtube.com/watch?v=_AV-B7XFRZU&feature=youtu.be)
 
-* ***Display Switch***
+* ***Display Mode Switch***
 
     ![!display switch](./demo/demo-gif.gif)
+
+* ***Display Style Switch***
+
+    <p>
+        <img src="./demo/demo-displayStyle.Jfif" width=600px>
+    </p>

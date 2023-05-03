@@ -152,35 +152,56 @@
           <em> Display Mode : </em>
             <label class="select-container">
               <label class="select-box">
-                <label class="options-container">
+                <label class="options-container" name="display-mode">
                   
-                  <div class="option">
-                    <input type="radio" class="radio" id="none" name="category" />
+                  <div class="option" name="display-mode">
+                    <input type="radio" class="radio" id="none" />
                     <label for="none">None</label>
                   </div>
           
-                  <div class="option">
-                    <input type="radio" class="radio" id="basic" name="category" />
+                  <div class="option" name="display-mode">
+                    <input type="radio" class="radio" id="basic" />
                     <label for="basic">Basic Mode</label>
                   </div>
           
-                  <div class="option">
-                    <input type="radio" class="radio" id="detect" name="category" />
+                  <div class="option" name="display-mode">
+                    <input type="radio" class="radio" id="detect" />
                     <label for="detect">Detect Mode</label>
                   </div>
 
-                  <div class="option">
-                    <input type="radio" class="radio" id="semantic" name="category" />
+                  <div class="option" name="display-mode">
+                    <input type="radio" class="radio" id="semantic" />
                     <label for="semantic">Semantic Mode</label>
                   </div>
                 </label>
           
-                <label class="selected">
-                  Semantic Mode
-                </label>
+                <label class="selected" name="display-mode"> Semantic Mode </label>
               </label>
             </label>
             
+          <br />
+          
+          <h4 class="entry-title"><u> ForeGround  </u></h4>
+          <br />
+
+          <em> Display Style : </em>
+            <label class="select-container">
+              <label class="select-box" style="width: 350px; ">
+                <label class="options-container" name="display-style">
+
+                  {% for key, value in STYLELIST.items() %}
+                  <div class="option" name="display-style">
+                    <input type="radio" class="radio" id="{{ key }}" />
+                    <label for="{{ key }}">{{ key }}</label>
+                  </div>
+                  {% endfor %}
+
+                </label>
+          
+                <label class="selected" name="display-style"> None </label>
+              </label>
+            </label>
+
           <br />
 
           <em> Exposure : </em>  
@@ -199,6 +220,9 @@
             </label>
 
           <br />
+          <br />
+
+          <h4 class="entry-title"><u> BackGround  </u></h4>
           <br />
 
           <em> BlurRate : </em>  

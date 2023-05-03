@@ -211,21 +211,38 @@ $(function () {
   });
 
   // Use Model Listener
-  const selected = document.querySelector(".selected");
-  const optionsContainer = document.querySelector(".options-container");
+  const displayModeContainer = document.querySelector('.options-container[name="display-mode"]');
+  const displayModeSelected = document.querySelector('.selected[name="display-mode"]');
+  const displayModeList = document.querySelectorAll('.option[name="display-mode"]');
 
-  const optionsList = document.querySelectorAll(".option");
-
-  selected.addEventListener("click", () => {
-    optionsContainer.classList.toggle("active");
+  displayModeSelected.addEventListener("click", () => {
+    displayModeContainer.classList.toggle("active");
   });
 
-  optionsList.forEach(o => {
+  displayModeList.forEach(o => {
     o.addEventListener("click", () => {
-      selected.innerHTML = o.querySelector("label").innerHTML;
-      optionsContainer.classList.remove("active");
-      // alert("type :" + selected.innerHTML);
-      $.get("/request_model_switch", {'type': selected.innerHTML}, function() {return});
+      displayModeSelected.innerHTML = o.querySelector("label").innerHTML;
+      displayModeContainer.classList.remove("active");
+      // alert("type :" + displayModeSelected.innerHTML);
+      $.get("/request_model_switch", {'type': displayModeSelected.innerHTML}, function() {return});
+    });
+  });
+
+  // Use Style Listener
+  const displayStyleContainer = document.querySelector('.options-container[name="display-style"]');
+  const displayStyleSelected = document.querySelector('.selected[name="display-style"]');
+  const displayStyleList = document.querySelectorAll('.option[name="display-style"]');
+
+  displayStyleSelected.addEventListener("click", () => {
+    displayStyleContainer.classList.toggle("active");
+  });
+
+  displayStyleList.forEach(o => {
+    o.addEventListener("click", () => {
+      displayStyleSelected.innerHTML = o.querySelector("label").innerHTML;
+      displayStyleContainer.classList.remove("active");
+      // alert("type :" + displayStyleSelected.innerHTML);
+      $.get("/request_style_switch", {'type': displayStyleSelected.innerHTML}, function() {return});
     });
   });
 

@@ -6,6 +6,7 @@ from PIL import Image, ImageSequence
 from enum import Enum
 
 from src.ObjectDetector import ObjectOnnxDetector
+from src.AnimeGAN import AnimeGAN
 
 class DisplayType(Enum):
 	NONE = "None"
@@ -58,11 +59,15 @@ class VideoStreaming(object):
         self._exposure = None
         self._contrast = None
         self._blur = None
+        self.style_dict = {"None" : None}
         self.InitCamSettings()
 
         ObjectOnnxDetector.set_defaults(model_config)
         self.MODEL = ObjectOnnxDetector()
 
+        style_path = [_ for _ in os.listdir("./models/Style") if _.endswith(".onnx")]
+        for type in style_path :
+            self.style_dict.update({os.path.splitext(type)[0]: AnimeGAN('./models/Style/'+  type)})
         self._preview = True
         self._flipH = False
         self._detect = DisplayType.SEMANTIC_MODE
@@ -178,6 +183,9 @@ class VideoStreaming(object):
 
     def setViewTarget(self, targets):
         self.MODEL.SetDisplayTarget(targets)
+
+    def setViewStyle(self, style_name) :
+        self.MODEL.SetDisplayStyle( self.style_dict[style_name])
 
     def show(self):
         while(self.CAM.isOpened()):
