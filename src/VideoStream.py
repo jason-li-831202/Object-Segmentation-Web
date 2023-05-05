@@ -5,7 +5,7 @@ import pafy
 from PIL import Image, ImageSequence
 from enum import Enum
 
-from src.ObjectDetector import ObjectOnnxDetector
+from src.ObjectDetector import ObjectOnnxDetector, convert_3channel_add_alpha
 from src.AnimeGAN import AnimeGAN
 
 class DisplayType(Enum):
@@ -85,8 +85,10 @@ class VideoStreaming(object):
         blur_range = range(1, 203, 2)
         self.blur_dict = {i:blur_range[i]  for i in range(len(blur_range))}
         self._blur = self.blur_dict[self.cam_config['blur']]
-        self.H = self.CAM.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        self.W = self.CAM.get(cv2.CAP_PROP_FRAME_WIDTH)
+        self.sensorH = self.CAM.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        self.displayH = 480
+        self.sensorW = self.CAM.get(cv2.CAP_PROP_FRAME_WIDTH)
+        self.displayW = 640
         for key in self.cam_config:
             print ('  ', key,'=', self.cam_config[key])
         return True
@@ -190,38 +192,42 @@ class VideoStreaming(object):
     def show(self):
         while(self.CAM.isOpened()):
             ret, snap = self.CAM.read()
+            snap = cv2.resize(snap, (int(self.sensorW), int(self.sensorH)))
+
             if (self._background and self.BG != None):
                 gt_ret, snap_bg = self.BG.read()
                 if gt_ret == True:
-                    snap_bg = cv2.resize(snap_bg, (int(self.W), int(self.H)))
+                    snap_bg = cv2.resize(snap_bg, (int(self.sensorW), int(self.sensorH)))
                     snap_bg = cv2.GaussianBlur(snap_bg,(self._blur, self._blur), cv2.BORDER_DEFAULT)
+                    snap_bg = convert_3channel_add_alpha(snap_bg, alpha=255)
                 else :
                     snap_bg = np.zeros((
-                        int(self.CAM.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-                        int(self.CAM.get(cv2.CAP_PROP_FRAME_WIDTH)), 
-                        3
+                        int(self.sensorH),
+                        int(self.sensorW), 
+                        4
                     ), np.uint8)
             else :
                 snap_bg = np.zeros((
-                    int(self.CAM.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-                    int(self.CAM.get(cv2.CAP_PROP_FRAME_WIDTH)), 
-                    3
+                        int(self.sensorH),
+                        int(self.sensorW), 
+                    4
                 ), np.uint8)
 
             if self.flipH:
                 snap = cv2.flip(snap, 1)
-
+                
+            snap_BGRA = convert_3channel_add_alpha(snap, alpha=255)
             if ret == True:
                 if self._preview:
                     if self.detect != DisplayType.NONE:
                         self.MODEL.DetectFrame(snap)
 
                         if self.detect == DisplayType.BASIC_MODE :
-                            snap = self.MODEL.DrawIdentifyOnFrame(snap, detect=True, seg=True)
+                            snap = self.MODEL.DrawIdentifyOnFrame(snap_BGRA, detect=True, seg=True)
                         elif self.detect == DisplayType.DETECT_MODE :
-                            snap = self.MODEL.DrawIdentifyOverlayOnFrame(snap, snap_bg, detect=True)
+                            snap = self.MODEL.DrawIdentifyOverlayOnFrame(snap_BGRA, snap_bg, detect=True)
                         elif self.detect == DisplayType.SEMANTIC_MODE :
-                            snap = self.MODEL.DrawIdentifyOverlayOnFrame(snap, snap_bg, detect=False, seg=True)
+                            snap = self.MODEL.DrawIdentifyOverlayOnFrame(snap_BGRA, snap_bg, detect=False, seg=True)
                 else:
                     snap = np.zeros((
                         int(self.CAM.get(cv2.CAP_PROP_FRAME_HEIGHT)),
@@ -233,8 +239,9 @@ class VideoStreaming(object):
                     color = (255,255,255)
                     cv2.putText(snap, label, (W//2, H//2), font, 2, color, 2)
 
-                frame = cv2.imencode('.jpg', snap)[1].tobytes()
-                yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                snap = cv2.resize(snap, (int(self.displayW), int(self.displayH)))
+                frame = cv2.imencode('.png', snap)[1].tobytes()
+                yield (b'--frame\r\n'b'Content-Type: image/png\r\n\r\n' + frame + b'\r\n')
                 time.sleep(0.01)
 
             else:

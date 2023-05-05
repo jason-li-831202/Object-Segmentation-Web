@@ -5,10 +5,15 @@ import numpy as np
 import onnxruntime as ort
 import os
 
-def hex_to_rgb(value):
+def convert_3channel_add_alpha(image, alpha=255):
+    b_channel, g_channel, r_channel = cv2.split(image)
+    alpha_channel = np.ones(b_channel.shape, dtype=b_channel.dtype) * alpha  # alpha通道每个像素点区间为[0,255], 0为完全透明，255是完全不透明
+    return cv2.merge((b_channel, g_channel, r_channel, alpha_channel))
+
+def hex_to_rgba(value, alpha=255):
     value = value.lstrip('#')
     lv = len(value)
-    return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
+    return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3)) + (alpha,)
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
@@ -267,13 +272,6 @@ class ObjectOnnxDetector(object):
             unscaled_xywh_boxes[:, 2] = scaled_xywh_boxes[:, 2] * ratiow
             unscaled_xywh_boxes[:, 3] = scaled_xywh_boxes[:, 3] * ratioh
 
-            # bounding_boxes[:, 2:4] = bounding_boxes[:, 2:4] - bounding_boxes[:, 0:2]
-            # bounding_boxes[:, 0] = (bounding_boxes[:, 0] - padw) * ratiow
-            # bounding_boxes[:, 1] = (bounding_boxes[:, 1] - padh) * ratioh
-            # bounding_boxes[:, 2] = bounding_boxes[:, 2] * ratiow
-            # bounding_boxes[:, 3] = bounding_boxes[:, 3] * ratioh
-
-            # return bounding_boxes
         return scaled_xyxy_boxes, scaled_xywh_boxes, unscaled_xyxy_boxes, unscaled_xywh_boxes
 
     def get_nms_results(self, bounding_boxes, confidences, class_ids, score, iou):
@@ -334,20 +332,22 @@ class ObjectOnnxDetector(object):
                         # Draw fill mask image
                         crop_mask = self.mask_maps[index][ymin:ymax, xmin:xmax, np.newaxis]
                         crop_mask_img = mask_img[ymin:ymax, xmin:xmax]
-                        crop_mask_img = crop_mask_img * (1 - crop_mask) + crop_mask * hex_to_rgb(self.colors_dict[label])
+                        crop_mask_img = crop_mask_img * (1 - crop_mask) + crop_mask * hex_to_rgba(self.colors_dict[label])
                         mask_img[ymin:ymax, xmin:xmax] = crop_mask_img
 
                     if detect :
-                        cv2.putText(frame_show, label, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hex_to_rgb(self.colors_dict[label]), 2)
-                        cv2.rectangle(frame_show, (xmin, ymin), (xmax, ymax),  hex_to_rgb(self.colors_dict[label]), 2)
+                        cv2.putText(frame_show, label, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hex_to_rgba(self.colors_dict[label]), 2)
+                        cv2.rectangle(frame_show, (xmin, ymin), (xmax, ymax),  hex_to_rgba(self.colors_dict[label]), 2)
         return cv2.addWeighted(mask_img, mask_alpha, frame_show, 1 - mask_alpha, 0) 
       
     def DrawIdentifyOverlayOnFrame(self, frame_overlap, frame_show, detect=True, seg=False) :
         mask_img = frame_show.copy()
-        mask_binaray = np.zeros(( int(frame_show.shape[0]), int(frame_show.shape[1]),3 ), np.uint8)
+        mask_binaray = np.zeros(( int(frame_show.shape[0]), int(frame_show.shape[1]), 3 ), np.uint8)
+        mask_binaray = convert_3channel_add_alpha(mask_binaray, alpha=255)
+
         if ( len(self.box_points) != 0 )  :
             for index, box in enumerate(self.box_points):
-                snap = np.zeros(( int(frame_show.shape[0]), int(frame_show.shape[1]), 3 ), np.uint8)
+                snap = np.zeros(( int(frame_show.shape[0]), int(frame_show.shape[1]), 4 ), np.uint8)
                 ymin, xmin, ymax, xmax, label = box
                 if (label in self.priority_target ) :
 
@@ -370,7 +370,7 @@ class ObjectOnnxDetector(object):
             # cv2.imshow("test :", frame_show)
             # cv2.waitKey(33)
             if (seg and self.mask_maps!= []):
-                mask_img[mask_binaray[:,:,0] >= 1] = [0, 0, 0]
-                frame_overlap[mask_binaray[:,:,0] < 1] = [0, 0, 0]
+                mask_img[mask_binaray[:,:,0] >= 1] = [0, 0, 0, 0]
+                frame_overlap[mask_binaray[:,:,0] < 1] = [0, 0, 0, 0]
                 frame_show = mask_img + frame_overlap
         return frame_show

@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block content %}
-<!-- header title and describe -->
+<!-- Header title and describe -->
 <header id=header>
   <h1 class="entry-title" ><i>{{ TITLE }}</i></h1>
   <h1 class="entry-title" style="text-align: center;">
@@ -19,8 +19,8 @@
   </h1>
 </header>
 
+<!-- Object list -->
 <aside id="aside">
-  <!-- <h1 class="aside">Target List</h1> -->
   <div class="aside-container">
     <h1>Target List</h1>
     <div class="items">
@@ -38,7 +38,7 @@
   </div>
 </aside>
 
-<!-- context -->
+<!-- Context -->
 <section id="section">
 
   <!-- flask settings -->
@@ -51,13 +51,13 @@
     <div class="list">
       <ul class="optionTitle">
         <p>Cam IP</p>
-        <p>Cam Height</p>
-        <p>Cam Width</p>
+        <p>Cam/Display Height</p>
+        <p>Cam/Display Width</p>
       </ul>
       <ul class="optionList">
         <p>{{CAM_CONFIG["cam_id"]}}</p>
-        <p>{{CAM_CONFIG["height"]}}</p>
-        <p>{{CAM_CONFIG["width"]}}</p>
+        <p>{{CAM_CONFIG["sensor_h"]}} / {{CAM_CONFIG["display_h"]}}</p>
+        <p>{{CAM_CONFIG["sensor_w"]}} / {{CAM_CONFIG["display_w"]}}</p>
       </ul>
     </div>
 
@@ -91,9 +91,14 @@
     <span ></span>
   </div>
 
-  <div id="capture" align=center>
-    <img id="videoElement" src="{{ url_for('video_feed') }}" />
+
+  <div id="canvas" align=center>
+    <img id="alphaElement" src="/static/icons/alpha_bg.jpg"  width=" {{CAM_CONFIG['display_w']}}" height= "{{CAM_CONFIG['display_h']}}" />
+    <div id="capture">
+      <img id="videoElement" src="{{ url_for('video_feed') }}" />
+    </div>
   </div>
+
 
   <div id="container" align=center>
     <!-- main btn -->
@@ -252,7 +257,7 @@
 
 </section>
 
-<!-- footer  -->
+<!-- Footer  -->
 <footer id="footer">
   <figure>
     <p style="text-align: center; display: inline-block;">© Taiwan 2023, built with </p>

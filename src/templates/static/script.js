@@ -17,12 +17,18 @@ function initSliderPosition(input_id){
 }
 
 function blockCapture() {
-  html2canvas(document.querySelector("#capture")).then(function (canvas) {
+  const options = {
+    backgroundColor: null // The canvas background can be set to transparent by using null or transparent.
+  }
+  var img = document.getElementById("videoElement");
+  img.style["margin-top"] = "auto";
+  html2canvas(document.querySelector("#capture"), options).then(function (canvas) {
       a = document.createElement('a');
-      a.href = canvas.toDataURL("image/jpeg", 0.92).replace("image/jpeg", "image/octet-stream");
-      a.download = 'screenshot.jpg';
+      a.href = canvas.toDataURL("image/png", 0.92).replace("image/png", "image/octet-stream");
+      a.download = 'screenshot.png';
       a.click();
   });
+  img.style["margin-top"] = "-64%";
 }
 
 function sliderChangeHandler(e) {
@@ -62,22 +68,26 @@ $(function () {
   // sleep(1000);
   
   // const spinner = document.getElementById("spinner");
-  // videoElement.onload =function() {
+  // canvas.onload = function() {
   //   spinner.style.display = 'none'; 
   // }
 
+  // =========================
   // Flask menu display
+  // =========================
   $(".modelView").click(function () {
     $(".modelMenu").toggleClass("active");
     $(".chevron-right").toggleClass("rotate");
   });
 
+  // =========================
   // Cam preview switch
+  // =========================
   $("input#cam-preview").on('change',function(){
     if(this.checked) {
       // alert("Checked");
       $.get("/request_preview_switch", {'active': "True"}, function() {
-				var img = document.getElementById("videoElement");
+				var img = document.getElementById("canvas");
 				img.style.display = "block";
         return
       });
@@ -85,7 +95,7 @@ $(function () {
     else {
       // alert("No Checked");
       $.get("/request_preview_switch", {'active': "False"}, function() {
-        var img = document.getElementById("videoElement");
+        var img = document.getElementById("canvas");
         img.style.display = "none";
         return
       });
@@ -93,7 +103,9 @@ $(function () {
 
   });
 
+  // =========================
   // Upload background switch
+  // =========================
   $("button#upload").bind("click", function () {
     const inputUrl = document.getElementById("video-url");
     const spinner = document.getElementById("spinner");
@@ -118,7 +130,9 @@ $(function () {
     
   });
 
+  // =========================
   // Background switch
+  // =========================
   $("input#background-preview").bind("click", function () {
     const inputUrl = document.getElementById("video-url");
     try 
@@ -145,7 +159,9 @@ $(function () {
 
   });
 
+  // =========================
   // Flip horizontal switch
+  // =========================
   $("input#flip-horizontal").bind("click", function () {
     if(this.checked) {
       // alert("Checked");
@@ -162,7 +178,9 @@ $(function () {
 
   });
 
+  // =========================
   // Reset camera
+  // =========================
   $("a#reset-cam").bind("click", function () {
     $.getJSON("/reset_camera", {'active': "False", 'type': "Semantic Mode"}, function (data) {
     });
@@ -193,7 +211,9 @@ $(function () {
     return false;
   });
 
+  // =========================
   // Use Target Listener
+  // =========================
   var checkboxes = document.querySelectorAll("input[type=checkbox][name=target]");
   let targetList = new Array();
   checkboxes.forEach(function(checkbox) {
@@ -210,7 +230,9 @@ $(function () {
     })
   });
 
+  // =========================
   // Use Model Listener
+  // =========================
   const displayModeContainer = document.querySelector('.options-container[name="display-mode"]');
   const displayModeSelected = document.querySelector('.selected[name="display-mode"]');
   const displayModeList = document.querySelectorAll('.option[name="display-mode"]');
@@ -228,7 +250,9 @@ $(function () {
     });
   });
 
+  // =========================
   // Use Style Listener
+  // =========================
   const displayStyleContainer = document.querySelector('.options-container[name="display-style"]');
   const displayStyleSelected = document.querySelector('.selected[name="display-style"]');
   const displayStyleList = document.querySelectorAll('.option[name="display-style"]');
@@ -242,11 +266,15 @@ $(function () {
       displayStyleSelected.innerHTML = o.querySelector("label").innerHTML;
       displayStyleContainer.classList.remove("active");
       // alert("type :" + displayStyleSelected.innerHTML);
-      $.get("/request_style_switch", {'type': displayStyleSelected.innerHTML}, function() {return});
+      $.get("/request_style_switch", {'type': displayStyleSelected.innerHTML}, function() {
+        return
+      });
     });
   });
 
+  // =========================
   // Use Slider Listener
+  // =========================
   var default_exposure = initSliderPosition("exposure");
   var default_contrast = initSliderPosition("contrast");
   var default_blur = initSliderPosition("blur");

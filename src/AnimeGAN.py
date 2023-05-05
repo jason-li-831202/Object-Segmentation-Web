@@ -77,8 +77,11 @@ class AnimeGAN:
         Returns:
             frame: (np.ndarray) - processed frame with face detection
         """
-        image = self.process_frame(frame)
+        b_channel, g_channel, r_channel, alpha_channel  = cv2.split(frame)
+        frame_bgr = cv2.merge((b_channel, g_channel, r_channel))
+
+        image = self.process_frame(frame_bgr)
         outputs = self.ort_sess.run(None, {self.ort_sess._inputs_meta[0].name: np.expand_dims(image, axis=0)})
-        frame = self.post_process(outputs[0], frame.shape[:2][::-1])
- 
-        return frame
+        frame_bgr = self.post_process(outputs[0], frame_bgr.shape[:2][::-1])
+    
+        return cv2.merge((frame_bgr, alpha_channel ))

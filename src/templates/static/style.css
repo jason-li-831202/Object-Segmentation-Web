@@ -102,18 +102,27 @@ h1.aside{
     clear: both;
 }
 
-#container #videoElement {
+#container #videoElement{
     /* width: auto; */
     width: 100%;
     margin: auto;
     height: 100%;
     margin-left: auto;
     margin-right: auto;
-    display: block;
-    background-color: black;
-    box-shadow: 0 0 30px hsla(240, 40%, 15%, 0.6);
+    box-shadow: 0 0 20px hsla(240, 40%, 15%, 0.6);
 }
 
+#videoElement{
+    margin-top: -64%; /* TODO : display size need change */
+    display: inline-block;
+}
+
+#alphaElement {
+    margin: auto;
+    margin-right: auto;
+    display: block;
+    box-shadow: 0 0 20px hsla(240, 40%, 15%, 0.6);
+}
 
 #control {
     margin-top: 40px;

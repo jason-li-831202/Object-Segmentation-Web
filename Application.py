@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, Response, redirect, url_for, jsonify
+from flask import Flask, render_template, request, Response, jsonify
 from flask_bootstrap import Bootstrap
 from gevent import monkey
 from gevent.pywsgi import WSGIServer
@@ -35,8 +35,10 @@ VIDEO = VideoStreaming(cam_config=cam_config, model_config=model_config)
 def home():
     TITLE = 'Object Segmentation App'
     CAM_CONFIG = cam_config.copy()
-    CAM_CONFIG["height"] = int(VIDEO.H)
-    CAM_CONFIG["width"] = int(VIDEO.W)
+    CAM_CONFIG["sensor_h"] = int(VIDEO.sensorH)
+    CAM_CONFIG["sensor_w"] = int(VIDEO.sensorW)
+    CAM_CONFIG["display_h"] = int(VIDEO.displayH)
+    CAM_CONFIG["display_w"] = int(VIDEO.displayW)
 
     MODLE_CONFIG = model_config.copy()
     for key, value in model_config.items():

@@ -4,8 +4,19 @@
 
 <h1 align="center"> Object Segmentation Web using YoloV8 with Flask </h1>
 
-Web application for real-time object segmentation using Flask , [YOLOv8](https://github.com/ultralytics/ultralytics), [AnimeGANv2/v3](https://github.com/TachibanaYoshino/AnimeGANv2) model in ONNX weights.
+<p>
+    <a href="#"><img alt="Python" src="https://img.shields.io/badge/Python-14354C.svg?logo=python&logoColor=white"></a>
+    <a href="#"><img alt="CSS" src="https://img.shields.io/badge/CSS-1572B6.svg?logo=css3&logoColor=white"></a>
+    <a href="#"><img alt="HTML" src="https://img.shields.io/badge/HTML-E34F26.svg?logo=html5&logoColor=white"></a>
+    <a href="#"><img alt="JavaScript" src="https://img.shields.io/badge/JavaScript-F7DF1E.svg?logo=javascript&logoColor=black"></a>
+    <a href="#"><img alt="TensorFlow" src="https://img.shields.io/badge/OnnxRuntime-FF6F00.svg?logo=TensorFlow&logoColor=white"></a>
+    <a href="#"><img alt="Markdown" src="https://img.shields.io/badge/Markdown-000000.svg?logo=markdown&logoColor=white"></a>
+    <a href="#"><img alt="Flask" src="https://img.shields.io/badge/flask-49D.svg?logo=flask&logoColor=white"></a>
+    <a href="#"><img alt="Visual Studio Code" src="https://img.shields.io/badge/Visual%20Studio%20Code-ad78f7.svg?logo=visual-studio-code&logoColor=white"></a>
+    <a href="#"><img alt="Windows" src="https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white"></a>
+</p>
 
+Web application for real-time object segmentation using Flask , [YOLOv8](https://github.com/ultralytics/ultralytics), [AnimeGANv2/v3](https://github.com/TachibanaYoshino/AnimeGANv2) model in ONNX weights.
 
 After obtaining images through the camera, it is possible to separate the target and background in the scene, and composite the target with a Web URL/Local Path video background. Additionally, you can change different display styles.
 
@@ -18,6 +29,11 @@ After obtaining images through the camera, it is possible to separate the target
 3) [Examples](#Examples)
 
 4) [Demo](#Demo)
+
+5) [Update-Log](#Update-Log)
+
+6) [License](#License)
+
 
 <p align="center">
     <img src="./demo/demo-screen.jpg" width=700px>
@@ -108,3 +124,18 @@ You can convert the Pytorch model to ONNX using the following Google Colab noteb
     <p>
         <img src="./demo/demo-displayStyle.jpg" width=600px>
     </p>
+
+
+<h1 id="Update-Log">➤ Update-Log</h1>
+
+* 2023/05/05 - Added images with downloadable transparent backgrounds.
+
+
+<h1 id="License">➤ License</h1>
+WiFi Analyzer is licensed under the GNU General Public License v3.0 (GPLv3).
+
+**GPLv3 License key requirements** :
+* Disclose Source
+* License and Copyright Notice
+* Same License
+* State Changes
