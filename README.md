@@ -18,7 +18,7 @@
 
 Web application for real-time object segmentation using Flask , [YOLOv8](https://github.com/ultralytics/ultralytics), [AnimeGANv2/v3](https://github.com/TachibanaYoshino/AnimeGANv2) model in ONNX weights.
 
-After obtaining images through the camera, it is possible to separate the target and background in the scene, and composite the target with a Web URL/Local Path video background. Additionally, you can change different display styles.
+After obtaining images through the camera, it is possible to separate the target and background in the scene, and composite the target with a Web URL/Local Path video background. Additionally, you can change different display styles and save a screenshot.
 
 
 # ➤ Contents
@@ -69,7 +69,7 @@ After obtaining images through the camera, it is possible to separate the target
 
 <h1 id="ONNX-Model">➤ ONNX-model</h1>
 
-You can convert the Pytorch model to ONNX using the following Google Colab notebook:  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1oDEKz8FUCXtW-REhWy5N__PgTPjt3jm9?usp=sharing)
+You can convert the YOLOv8-seg model to ONNX using the following Google Colab notebook:  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1oDEKz8FUCXtW-REhWy5N__PgTPjt3jm9?usp=sharing)
 - The License of the models is GPL-3.0 license: [License](https://github.com/ultralytics/ultralytics/blob/master/LICENSE)
 
 
@@ -125,7 +125,7 @@ You can convert the Pytorch model to ONNX using the following Google Colab noteb
         <img src="./demo/demo-displayStyle.jpg" width=600px>
     </p>
 
-* ***Display Background Removal ***
+* ***Display Background Removal***
 
     <p>
         <img src="./demo/demo-Removal.png" width=600px>
