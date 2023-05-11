@@ -2,7 +2,7 @@
   <img align="center" src="./demo/title.jpg" height=70px>
 </p>
 
-<h1 align="center"> Object Segmentation Web using YoloV8 with Flask </h1>
+<h1 align="center"> Object Background Removal Web using YoloV8 with Flask </h1>
 
 <p>
     <a href="#"><img alt="Python" src="https://img.shields.io/badge/Python-14354C.svg?logo=python&logoColor=white"></a>
@@ -30,7 +30,7 @@ After obtaining images through the camera, it is possible to separate the target
 
 4) [Demo](#Demo)
 
-5) [Update-Log](#Update-Log)
+5) [Updates](#Updates)
 
 6) [License](#License)
 
@@ -125,8 +125,13 @@ You can convert the Pytorch model to ONNX using the following Google Colab noteb
         <img src="./demo/demo-displayStyle.jpg" width=600px>
     </p>
 
+* ***Display Background Removal ***
 
-<h1 id="Update-Log">➤ Update-Log</h1>
+    <p>
+        <img src="./demo/demo-Removal.png" width=600px>
+    </p>
+
+<h1 id="Updates">➤ Updates</h1>
 
 * 2023/05/05 - Added images with downloadable transparent backgrounds.
 

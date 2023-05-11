@@ -1,4 +1,5 @@
 import os
+import socket   
 from flask import Flask, render_template, request, Response, jsonify
 from flask_bootstrap import Bootstrap
 from gevent import monkey
@@ -169,6 +170,13 @@ def reset_camera():
 
 
 if __name__ == "__main__":
-    http_server = WSGIServer(("127.0.0.1", 8080), application)
-    print("The server will be accessible at [ http://localhost:8080 ].")
+    hostname=socket.gethostname()   
+    IPAddr=socket.gethostbyname(hostname)   
+    print("Your Computer Name is:"+hostname)   
+    print("Your Computer IP Address is:"+IPAddr)  
+
+    http_server = WSGIServer(('0.0.0.0', 8080), application)
+    print("==============================================================")
+    print("The server will be accessible at [ http://"+ IPAddr +":8080 ].")
+    print("==============================================================")
     http_server.serve_forever()
