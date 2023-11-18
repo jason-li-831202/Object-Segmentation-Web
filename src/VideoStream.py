@@ -2,6 +2,7 @@ import time
 import cv2, os
 import numpy as np
 import pafy
+import typing
 from PIL import Image, ImageSequence
 from enum import Enum
 
@@ -14,7 +15,7 @@ class DisplayType(Enum):
 	DETECT_MODE = "Detect Mode"
 	SEMANTIC_MODE = "Semantic Mode"
 
-class imageCapture() :
+class ImageCapture() :
     def __init__(self, filename) -> None:
         self.img  = cv2.imread(filename)
         self.type = "image"
@@ -44,14 +45,11 @@ class imageCapture() :
 class VideoStreaming(object):
     def __init__(self, cam_config=None, model_config=None):
         super(VideoStreaming, self).__init__()
+        assert cam_config != None, Exception("cam_config setting is %s." % cam_config)
+        assert model_config != None, Exception("model_config setting is %s." % model_config)
         self.cam_config = cam_config
         self.cam_config['blur'] = 0
-        if (cam_config == None) :
-            raise Exception("cam_config setting is %s." % cam_config)
 
-        if (model_config == None) :
-            raise Exception("model_config setting is %s." % model_config)
-        
         self.CAM = cv2.VideoCapture(self.cam_config['cam_id'])
         if (not self.CAM.isOpened()) :
             raise Exception("video root [%s] is error. please check it." % self.cam_config['cam_id'])
@@ -59,21 +57,22 @@ class VideoStreaming(object):
         self._exposure = None
         self._contrast = None
         self._blur = None
-        self.style_dict = {"None" : None}
-        self.InitCamSettings()
-
-        ObjectOnnxDetector.set_defaults(model_config)
-        self.MODEL = ObjectOnnxDetector()
-
-        style_path = [_ for _ in os.listdir("./models/Style") if _.endswith(".onnx")]
-        for type in style_path :
-            self.style_dict.update({os.path.splitext(type)[0]: AnimeGAN('./models/Style/'+  type)})
         self._preview = True
         self._flipH = False
         self._detect = DisplayType.SEMANTIC_MODE
         self._background = False
+        self.initCamSettings()
 
-    def InitCamSettings(self) :
+        ObjectOnnxDetector.set_defaults(model_config)
+        self.MODEL = ObjectOnnxDetector()
+
+        self.style_dict = {"None" : None}
+        style_path = [_ for _ in os.listdir("./models/Style") if _.endswith(".onnx")]
+        for type in style_path :
+            self.style_dict.update({os.path.splitext(type)[0]: AnimeGAN('./models/Style/'+  type)})
+
+
+    def initCamSettings(self) :
         print('*'*28)
         print('* Init model settings *')
         print('*'*28)
@@ -98,31 +97,31 @@ class VideoStreaming(object):
         return self._preview
 
     @preview.setter
-    def preview(self, value):
-        self._preview = eval(value)
+    def preview(self, value : typing.Union[bool, str] ) -> None:
+        self._preview = value if type(value)==bool else eval(value)
 
     @property
     def background(self):
         return self._background
 
     @background.setter
-    def background(self, value):
-        self._background = eval(value)
+    def background(self, value : typing.Union[bool, str] ) -> None:
+        self._background = value if type(value)==bool else eval(value)
 
     @property
     def flipH(self):
         return self._flipH
 
     @flipH.setter
-    def flipH(self, value):
-        self._flipH = eval(value)
+    def flipH(self, value : typing.Union[bool, str] ) -> None:
+        self._flipH = value if type(value)==bool else eval(value)
 
     @property
     def detect(self):
         return self._detect
 
     @detect.setter
-    def detect(self, value):
+    def detect(self, value : str) -> None:
         for type in list(DisplayType) :
             if (type.value == value) :
                 self._detect = type
@@ -132,8 +131,8 @@ class VideoStreaming(object):
         return self._exposure
 
     @exposure.setter
-    def exposure(self, value):
-        self._exposure = value
+    def exposure(self, value : typing.Union[int, str] ) -> None:
+        self._exposure = value if ( type(value) == int) else int(value)
         self.CAM.set(cv2.CAP_PROP_EXPOSURE, self._exposure)
 
     @property
@@ -141,8 +140,8 @@ class VideoStreaming(object):
         return self._contrast
 
     @contrast.setter
-    def contrast(self, value):
-        self._contrast = value
+    def contrast(self, value : typing.Union[int, str] ) -> None:
+        self._contrast = value if ( type(value) == int) else int(value)
         self.CAM.set(cv2.CAP_PROP_CONTRAST, self._contrast)
 
     @property
@@ -150,10 +149,12 @@ class VideoStreaming(object):
         return self._blur
 
     @blur.setter
-    def blur(self, value):
-        self._blur = self.blur_dict[value]
+    def blur(self, value : typing.Union[int, str] ) -> None:
+        value = value if ( type(value) == int) else int(value)
+        if value in self.blur_dict :
+            self._blur = self.blur_dict[value]
 
-    def setBackGround(self, url):
+    def setBackGround(self, url : str) -> None:
         start = time.time()
 
         root, extension = os.path.splitext(url)
@@ -164,7 +165,7 @@ class VideoStreaming(object):
                 print("File don't exist.")
         elif extension in {".png", ".PNG", ".jpg", ".jpeg", ".gif", ".bmp", ".tif" }:
             if os.path.isfile(url):
-                self.BG = imageCapture(url)
+                self.BG = ImageCapture(url)
             else :
                 print("File don't exist.")
         else :
@@ -183,13 +184,16 @@ class VideoStreaming(object):
         end = time.time()
         print("loading background time (sec) : ", round(end-start, 2) )
 
-    def setViewTarget(self, targets):
-        self.MODEL.SetDisplayTarget(targets)
+    def setViewTarget(self, targets : str) -> None:
+        if type(targets) == str:
+            self.MODEL.SetDisplayTarget(targets)
 
-    def setViewStyle(self, style_name) :
+    def setViewStyle(self, style_name : str) -> None:
+        if (self.MODEL.style != None) :
+            self.MODEL.style.unload()
         self.MODEL.SetDisplayStyle( self.style_dict[style_name])
 
-    def show(self):
+    def show(self) -> bytes:
         while(self.CAM.isOpened()):
             ret, snap = self.CAM.read()
             snap = cv2.resize(snap, (int(self.sensorW), int(self.sensorH)))

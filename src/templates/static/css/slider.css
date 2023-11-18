@@ -2,7 +2,7 @@
 .slider input, .slider output {
   display: inline-block;
   vertical-align: middle;
-  font-size: 1px;
+  font-size: 10px;
   font-family: Arial, sans-serif;
 }
 

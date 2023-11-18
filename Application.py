@@ -23,14 +23,11 @@ cam_config = {
     'contrast': 50 # init cam contrast
 }
   
+VIDEO = VideoStreaming(cam_config=cam_config, model_config=model_config)
 application = Flask(__name__, 
                     static_folder='./src/templates/static', 
                     template_folder='./src/templates')
 Bootstrap(application)
-
-
-
-VIDEO = VideoStreaming(cam_config=cam_config, model_config=model_config)
 
 @application.route('/')
 def home():
@@ -131,7 +128,7 @@ def request_style_switch():
 @application.route('/request_exposure')
 def request_exposure():
     value  = request.args.get('value')
-    VIDEO.exposure = int(value)
+    VIDEO.exposure = value
     print('*'*10)
     print("display exposure :", VIDEO.exposure)
     print('*'*10)
@@ -141,7 +138,7 @@ def request_exposure():
 @application.route('/request_contrast')
 def request_contrast():
     value  = request.args.get('value')
-    VIDEO.contrast = int(value)
+    VIDEO.contrast = value
     print('*'*10)
     print("display contrast :",VIDEO.contrast)
     print('*'*10)
@@ -150,7 +147,7 @@ def request_contrast():
 @application.route('/request_blur')
 def request_blur():
     value  = request.args.get('value')
-    VIDEO.blur = int(value)
+    VIDEO.blur = value
     print('*'*10)
     print("display blur (kernel):",VIDEO.blur)
     print('*'*10)
@@ -158,7 +155,7 @@ def request_blur():
 
 @application.route('/reset_camera')
 def reset_camera():
-    STATUS =VIDEO.InitCamSettings()
+    STATUS =VIDEO.initCamSettings()
     active  = request.args.get('active')
     VIDEO.flipH = active
     type  = request.args.get('type')

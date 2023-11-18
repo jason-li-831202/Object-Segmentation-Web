@@ -15,11 +15,7 @@ class AnimeGAN:
     'https://docs.google.com/uc?export=download&id=1X3Glf69Ter_n2Tj6p81VpGKx7U4Dq-tI' AnimeGANv2_Paprika.onnx
 
     """
-    def __init__(
-        self,
-        model_path: str = '',
-        downsize_ratio: float = 1.0,
-        ) -> None:
+    def __init__( self, model_path: str = '', downsize_ratio: float = 1.0, ) -> None:
         """
         Args:
             model_path: (str) - path to onnx model file
@@ -27,14 +23,14 @@ class AnimeGAN:
         """
         if not os.path.exists(model_path):
             raise Exception(f"Model doesn't exists in {model_path}")
-        
+        self.model_path = model_path
         self.downsize_ratio = downsize_ratio
+        self.providers = ['CUDAExecutionProvider'] if ort.get_device() == "GPU" else ['CPUExecutionProvider']
+        
+        self.ort_sess = None
+        # self.ort_sess = ort.InferenceSession(self.model_path, providers=self.providers)
 
-        providers = ['CUDAExecutionProvider'] if ort.get_device() == "GPU" else ['CPUExecutionProvider']
-
-        self.ort_sess = ort.InferenceSession(model_path, providers=providers)
-
-    def to_32s(self, x):
+    def __to_32s(self, x):
         return 256 if x < 256 else x - x%32
 
     def process_frame(self, frame: np.ndarray, x32: bool = True) -> np.ndarray:
@@ -49,7 +45,7 @@ class AnimeGAN:
         """
         h, w = frame.shape[:2]
         if x32: # resize image to multiple of 32s
-            frame = cv2.resize(frame, (self.to_32s(int(w*self.downsize_ratio)), self.to_32s(int(h*self.downsize_ratio))))
+            frame = cv2.resize(frame, (self.__to_32s(int(w*self.downsize_ratio)), self.__to_32s(int(h*self.downsize_ratio))))
         frame = frame.astype(np.float32) / 127.5 - 1.0
         return frame
 
@@ -77,6 +73,8 @@ class AnimeGAN:
         Returns:
             frame: (np.ndarray) - processed frame with face detection
         """
+        if (self.ort_sess == None) : 
+            self.ort_sess = ort.InferenceSession(self.model_path, providers=self.providers)
         b_channel, g_channel, r_channel, alpha_channel  = cv2.split(frame)
         frame_bgr = cv2.merge((b_channel, g_channel, r_channel))
 
@@ -85,3 +83,7 @@ class AnimeGAN:
         frame_bgr = self.post_process(outputs[0], frame_bgr.shape[:2][::-1])
     
         return cv2.merge((frame_bgr, alpha_channel ))
+    
+    def unload(self):
+        del self.ort_sess
+        self.ort_sess = None

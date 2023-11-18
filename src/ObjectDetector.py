@@ -1,6 +1,7 @@
 import math
 import cv2
 import random
+import typing
 import numpy as np
 import onnxruntime as ort
 import os
@@ -70,7 +71,7 @@ class ObjectOnnxDetector(object):
         self._get_input_details()
         self._get_output_details()
 
-    def _get_class(self, classes_path):
+    def _get_class(self, classes_path : str) -> None:
         with open(classes_path) as f:
             class_names = f.readlines()
         self.class_names = [c.strip() for c in class_names]
@@ -81,7 +82,7 @@ class ObjectOnnxDetector(object):
         self.colors_dict = dict(zip(list(self.class_names), get_colors))
         self.colors_dict["unknown"] = '#ffffff'
 
-    def _load_model_onnxruntime_version(self, model_path) :
+    def _load_model_onnxruntime_version(self, model_path : str) -> None:
         if  ort.get_device() == 'GPU' and 'CUDAExecutionProvider' in  ort.get_available_providers():  # gpu 
             self.providers = 'CUDAExecutionProvider'
         else :
@@ -102,7 +103,7 @@ class ObjectOnnxDetector(object):
         self.output_names = [model_outputs[i].name for i in range(len(model_outputs))]
         self.output_layers_count = len(self.output_names)
 
-    def _process_box_output(self, box_output, conf_thres, num_masks=32):
+    def _process_box_output(self, box_output : np.array, conf_thres : int, num_masks : int =32) :
         class_ids = []
         confidences = []
         box_predictions = []
@@ -128,7 +129,7 @@ class ObjectOnnxDetector(object):
                 box_predictions.append(np.stack([(x - 0.5 * w), (y - 0.5 * h), (x + 0.5 * w), (y + 0.5 * h)], axis=-1)) #x1, y1, x2, y2
         return box_predictions, confidences, class_ids, np.array(mask_predictions)
 
-    def _process_mask_output(self, mask_output, input_boxes, mask_predictions, indices):
+    def _process_mask_output(self, mask_output, input_boxes, mask_predictions, indices) -> np.array:
         if mask_predictions.shape[0] == 0:
             return []
         mask_output = np.squeeze(mask_output)
@@ -178,28 +179,9 @@ class ObjectOnnxDetector(object):
         boxes *= np.array([image_shape[1], image_shape[0], image_shape[1], image_shape[0]])
 
         return boxes
-    
-    def resize_image_format(self, srcimg, frame_resize):
-        padh, padw, newh, neww = 0, 0, frame_resize, frame_resize
-        if self.keep_ratio and srcimg.shape[0] != srcimg.shape[1]:
-            hw_scale = srcimg.shape[0] / srcimg.shape[1]
-            if hw_scale > 1:
-                newh, neww = frame_resize, int(frame_resize / hw_scale)
-                img = cv2.resize(srcimg, (neww, newh), interpolation=cv2.INTER_CUBIC)
-                padw = int((frame_resize - neww) * 0.5)
-                img = cv2.copyMakeBorder(img, 0, 0, padw, frame_resize - neww - padw, cv2.BORDER_CONSTANT,
-                                         value=0)  # add border
-            else:
-                newh, neww = int(frame_resize * hw_scale) + 1, frame_resize
-                img = cv2.resize(srcimg, (neww, newh), interpolation=cv2.INTER_CUBIC)
-                padh = int((frame_resize - newh) * 0.5)
-                img = cv2.copyMakeBorder(img, padh, frame_resize - newh - padh, 0, 0, cv2.BORDER_CONSTANT, value=0)
-        else:
-            img = cv2.resize(srcimg, (frame_resize, frame_resize), interpolation=cv2.INTER_CUBIC)
-        ratioh, ratiow = srcimg.shape[0] / newh, srcimg.shape[1] / neww
-        return img, newh, neww, ratioh, ratiow, padh, padw
 
-    def adjust_boxes_ratio(self, bounding_box, ratio, stretch_type) :
+    @staticmethod
+    def adjust_boxes_ratio(bounding_box, ratio, stretch_type) :
         """ Adjust the aspect ratio of the box according to the orientation """
         xmin, ymin, width, height = bounding_box 
         width = int(width)
@@ -242,6 +224,26 @@ class ObjectOnnxDetector(object):
             print("stretch_type not defined.")
         return (xmin, ymin, xmax, ymax)
     
+    def resize_image_format(self, srcimg, frame_resize):
+        padh, padw, newh, neww = 0, 0, frame_resize, frame_resize
+        if self.keep_ratio and srcimg.shape[0] != srcimg.shape[1]:
+            hw_scale = srcimg.shape[0] / srcimg.shape[1]
+            if hw_scale > 1:
+                newh, neww = frame_resize, int(frame_resize / hw_scale)
+                img = cv2.resize(srcimg, (neww, newh), interpolation=cv2.INTER_CUBIC)
+                padw = int((frame_resize - neww) * 0.5)
+                img = cv2.copyMakeBorder(img, 0, 0, padw, frame_resize - neww - padw, cv2.BORDER_CONSTANT,
+                                         value=0)  # add border
+            else:
+                newh, neww = int(frame_resize * hw_scale) + 1, frame_resize
+                img = cv2.resize(srcimg, (neww, newh), interpolation=cv2.INTER_CUBIC)
+                padh = int((frame_resize - newh) * 0.5)
+                img = cv2.copyMakeBorder(img, padh, frame_resize - newh - padh, 0, 0, cv2.BORDER_CONSTANT, value=0)
+        else:
+            img = cv2.resize(srcimg, (frame_resize, frame_resize), interpolation=cv2.INTER_CUBIC)
+        ratioh, ratiow = srcimg.shape[0] / newh, srcimg.shape[1] / neww
+        return img, newh, neww, ratioh, ratiow, padh, padw
+
     def get_boxes_coordinate(self, bounding_boxes, ratiow, ratioh, padh, padw ) :
         scaled_xyxy_boxes, scaled_xywh_boxes = np.copy(bounding_boxes), np.copy(bounding_boxes)
         unscaled_xyxy_boxes, unscaled_xywh_boxes = np.copy(bounding_boxes), np.copy(bounding_boxes)
@@ -367,7 +369,6 @@ class ObjectOnnxDetector(object):
 
                         snap[ymin:ymax, xmin:xmax] = crop_mask_img * (1 - crop_mask) + crop_mask
                         mask_binaray += snap
-            # cv2.imshow("test :", frame_show)
             # cv2.waitKey(33)
             if (seg and self.mask_maps!= []):
                 mask_img[mask_binaray[:,:,0] >= 1] = [0, 0, 0, 0]
