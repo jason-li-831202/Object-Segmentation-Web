@@ -175,5 +175,6 @@ if __name__ == "__main__":
     http_server = WSGIServer(('0.0.0.0', 8080), application)
     print("==============================================================")
     print("The server will be accessible at [ http://"+ IPAddr +":8080 ].")
+    print("Use Docker will be accessible at [ http://localhost:8080 ]")
     print("==============================================================")
     http_server.serve_forever()

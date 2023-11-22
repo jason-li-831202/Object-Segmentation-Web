@@ -1,7 +1,8 @@
 import time
 import cv2, os
 import numpy as np
-import pafy
+# import pafy
+import youtube_dl
 import typing
 from PIL import Image, ImageSequence
 from enum import Enum
@@ -43,16 +44,16 @@ class ImageCapture() :
                 return True, self.img
                  
 class VideoStreaming(object):
-    def __init__(self, cam_config=None, model_config=None):
+    def __init__(self, cam_config : dict = None, model_config : dict = None) -> None:
         super(VideoStreaming, self).__init__()
         assert cam_config != None, Exception("cam_config setting is %s." % cam_config)
         assert model_config != None, Exception("model_config setting is %s." % model_config)
         self.cam_config = cam_config
         self.cam_config['blur'] = 0
 
-        self.CAM = cv2.VideoCapture(self.cam_config['cam_id'])
-        if (not self.CAM.isOpened()) :
-            raise Exception("video root [%s] is error. please check it." % self.cam_config['cam_id'])
+        self.CAM = cv2.VideoCapture(self.cam_config['cam_id'], cv2.CAP_DSHOW)
+        # if (not self.CAM.isOpened()) :
+        #     raise Exception("video root [%s] is error. please check it." % self.cam_config['cam_id'])
         self.BG = None
         self._exposure = None
         self._contrast = None
@@ -169,17 +170,27 @@ class VideoStreaming(object):
             else :
                 print("File don't exist.")
         else :
-            try :
-                video = pafy.new(url)
-                best = video.getbest(preftype="mp4")
-                self.BG = cv2.VideoCapture(best.url)
-            except OSError :
-                print("You need to revise [your path]\site-packages\youtube_dl\extractor\youtube.py : ['uploader_id': self._search_regex(r'/(?:channel|user)/([^/?&#]+)', owner_profile_url, 'uploader id') if owner_profile_url else None,] to \
-                    ['uploader_id': self._search_regex(r'/(?:channel/|user/|@)([^/?&#]+)', owner_profile_url, 'uploader id', default=None),] ")
-            except KeyError:
-                print("You need to comment out [your path]\site-packages\pafy\backend_youtube_dl.py : [self._likes = self._ydl_info['like_count'] and [self._dislikes = self._ydl_info['dislike_count']")
-            except :
-                print("Invalid URL escape while parsing URL")
+            ydl_opts = {}
+            # create youtube-dl object
+            ydl = youtube_dl.YoutubeDL(ydl_opts)
+            # set video url, extract video information
+            info_dict = ydl.extract_info(url, download=False)
+            # get video formats available
+            formats = info_dict.get('formats',None)
+            for f in formats:
+                video_url = f.get('url',None)
+            self.BG = cv2.VideoCapture(video_url)
+            # try :
+            #     video = pafy.new(url)
+            #     best = video.getbest(preftype="mp4")
+            #     self.BG = cv2.VideoCapture(best.url)
+            # except OSError :
+            #     print("You need to revise [your path]\site-packages\youtube_dl\extractor\youtube.py : ['uploader_id': self._search_regex(r'/(?:channel|user)/([^/?&#]+)', owner_profile_url, 'uploader id') if owner_profile_url else None,] to \
+            #         ['uploader_id': self._search_regex(r'/(?:channel/|user/|@)([^/?&#]+)', owner_profile_url, 'uploader id', default=None),] ")
+            # except KeyError:
+            #     print("You need to comment out [your path]\site-packages\pafy\backend_youtube_dl.py : [self._likes = self._ydl_info['like_count'] and [self._dislikes = self._ydl_info['dislike_count']")
+            # except :
+            #     print("Invalid URL escape while parsing URL")
 
         end = time.time()
         print("loading background time (sec) : ", round(end-start, 2) )
@@ -250,4 +261,4 @@ class VideoStreaming(object):
 
             else:
                 break
-        print('Out Display Loop!')
+        print("video root [%s] is error. please check it." % self.cam_config['cam_id'])

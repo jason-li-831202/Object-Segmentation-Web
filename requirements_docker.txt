@@ -3,6 +3,5 @@ Flask-Bootstrap==3.3.7.1
 gevent==22.10.2
 numpy==1.21.6
 onnxruntime==1.12.0
-opencv-python==4.5.4.60
-youtube-dl==2021.12.17
+opencv-python-headless==4.5.4.60
 pillow

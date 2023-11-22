@@ -14,6 +14,7 @@
     <a href="#"><img alt="Flask" src="https://img.shields.io/badge/flask-49D.svg?logo=flask&logoColor=white"></a>
     <a href="#"><img alt="Visual Studio Code" src="https://img.shields.io/badge/Visual%20Studio%20Code-ad78f7.svg?logo=visual-studio-code&logoColor=white"></a>
     <a href="#"><img alt="Windows" src="https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white"></a>
+    <a href="#"><img alt="Docker" src="https://img.shields.io/badge/Docker-FF9F00.svg?logo=docker&logoColor=white"></a>
 </p>
 
 Web application for real-time object segmentation using Flask , [YOLOv8](https://github.com/ultralytics/ultralytics), [AnimeGANv2/v3](https://github.com/TachibanaYoshino/AnimeGANv2) model in ONNX weights.
@@ -28,11 +29,13 @@ After obtaining images through the camera, it is possible to separate the target
 
 3) [Examples](#Examples)
 
-4) [Demo](#Demo)
+4) [Docker](#Docker)
 
-5) [Updates](#Updates)
+5) [Demo](#Demo)
 
-6) [License](#License)
+6) [Updates](#Updates)
+
+7) [License](#License)
 
 
 <p align="center">
@@ -69,7 +72,7 @@ After obtaining images through the camera, it is possible to separate the target
 
 <h1 id="ONNX-Model">➤ ONNX-model</h1>
 
-You can convert the YOLOv8-seg model to ONNX using the following Google Colab notebook:  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1oDEKz8FUCXtW-REhWy5N__PgTPjt3jm9?usp=sharing)
+You can convert the YOLOv8-seg model to ONNX using the following Google Colab notebook :  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1oDEKz8FUCXtW-REhWy5N__PgTPjt3jm9?usp=sharing)
 - The License of the models is GPL-3.0 license: [License](https://github.com/ultralytics/ultralytics/blob/master/LICENSE)
 
 
@@ -111,6 +114,17 @@ You can convert the YOLOv8-seg model to ONNX using the following Google Colab no
     | `DisplayType.DETECT_MODE`     | Separate the target box and background on image.                |
     | `DisplayType.SEMANTIC_MODE`   | Separate the target segmentation and background on image.       | 
 
+
+<h1 id="Docker">➤ Docker</h1>
+
+From the root directory, run :
+
+```
+docker build -t <name-of-your-image> .
+docker run --rm --privileged --device="/dev/video0:/dev/video0" -t -p 8080:8080 <name-of-your-image>
+```
+
+
 <h1 id="Demo">➤ Demo</h1>
 
 * [***Demo Youtube Video***](https://www.youtube.com/watch?v=_AV-B7XFRZU&feature=youtu.be)
@@ -134,7 +148,7 @@ You can convert the YOLOv8-seg model to ONNX using the following Google Colab no
 <h1 id="Updates">➤ Updates</h1>
 
 * 2023/05/05 - Added images with downloadable transparent backgrounds.
-
+* 2023/11/22 - Fixed youtube_dl bug, and remove pafy package.
 
 <h1 id="License">➤ License</h1>
 WiFi Analyzer is licensed under the GNU General Public License v3.0 (GPLv3).
