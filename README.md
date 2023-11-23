@@ -120,7 +120,7 @@ You can convert the YOLOv8-seg model to ONNX using the following Google Colab no
 From the root directory, run :
 
 ```
-docker build -t <name-of-your-image> .
+docker build -t <name-of-your-image> -f ./docker/Dockerfile .
 docker run --rm --privileged --device="/dev/video0:/dev/video0" -t -p 8080:8080 <name-of-your-image>
 ```
 
