@@ -55,7 +55,7 @@ class ObjectOnnxDetector(object):
         self.box_points = []
         self.mask_maps = []
         self.style = None
-        self.keep_ratio = False
+        self.keep_ratio = True
 
         classes_path = os.path.expanduser(self.classes_path)
         if (os.path.isfile(classes_path) is False):
@@ -136,14 +136,14 @@ class ObjectOnnxDetector(object):
 
         # Calculate the mask maps for each box
         num_mask, mask_height, mask_width = mask_output.shape  # CHW
+
         masks = sigmoid(mask_predictions @ mask_output.reshape((num_mask, -1)))
         masks = masks.reshape((-1, mask_height, mask_width))
-
+        print("mask shape :", masks.shape)
         # Downscale the boxes to match the mask size
         mask_boxes = self.rescale_boxes(input_boxes,
                                    (self.input_height, self.input_width),
                                    (mask_height, mask_width))
-        
 
         # For every box/mask pair, get the mask map
         mask_maps = np.zeros((len(indices), self.input_height, self.input_width))
@@ -154,7 +154,7 @@ class ObjectOnnxDetector(object):
                 scale_y1 = int(math.floor(mask_boxes[indice][1]) )
                 scale_x2 = int(math.ceil(mask_boxes[indice][2]) )
                 scale_y2 = int(math.ceil(mask_boxes[indice][3]) )
-                
+
                 x1 = int(math.floor(input_boxes[indice][0]))
                 y1 = int(math.floor(input_boxes[indice][1]))
                 x2 = int(math.ceil(input_boxes[indice][2]))
@@ -224,23 +224,24 @@ class ObjectOnnxDetector(object):
             print("stretch_type not defined.")
         return (xmin, ymin, xmax, ymax)
     
-    def resize_image_format(self, srcimg, frame_resize):
-        padh, padw, newh, neww = 0, 0, frame_resize, frame_resize
+    def resize_image_format(self, srcimg):
+        padh, padw, newh, neww = 0, 0, self.model_height, self.model_width
         if self.keep_ratio and srcimg.shape[0] != srcimg.shape[1]:
             hw_scale = srcimg.shape[0] / srcimg.shape[1]
             if hw_scale > 1:
-                newh, neww = frame_resize, int(frame_resize / hw_scale)
+                newh, neww = self.model_height, int(self.model_height / hw_scale)
                 img = cv2.resize(srcimg, (neww, newh), interpolation=cv2.INTER_CUBIC)
-                padw = int((frame_resize - neww) * 0.5)
-                img = cv2.copyMakeBorder(img, 0, 0, padw, frame_resize - neww - padw, cv2.BORDER_CONSTANT,
+                padw = int((self.model_width - neww) * 0.5)
+                img = cv2.copyMakeBorder(img, 0, 0, padw, self.model_width - neww - padw, cv2.BORDER_CONSTANT,
                                          value=0)  # add border
             else:
-                newh, neww = int(frame_resize * hw_scale) + 1, frame_resize
+                newh, neww = int(self.model_width * hw_scale), self.model_width
                 img = cv2.resize(srcimg, (neww, newh), interpolation=cv2.INTER_CUBIC)
-                padh = int((frame_resize - newh) * 0.5)
-                img = cv2.copyMakeBorder(img, padh, frame_resize - newh - padh, 0, 0, cv2.BORDER_CONSTANT, value=0)
+                padh = int((self.model_height - newh) * 0.5)
+                img = cv2.copyMakeBorder(img, padh, self.model_height - newh - padh, 0, 0, cv2.BORDER_CONSTANT, value=0)
         else:
-            img = cv2.resize(srcimg, (frame_resize, frame_resize), interpolation=cv2.INTER_CUBIC)
+            img = cv2.resize(srcimg, (self.model_width, self.model_height), interpolation=cv2.INTER_CUBIC)
+
         ratioh, ratiow = srcimg.shape[0] / newh, srcimg.shape[1] / neww
         return img, newh, neww, ratioh, ratiow, padh, padw
 
@@ -269,8 +270,8 @@ class ObjectOnnxDetector(object):
             scaled_xywh_boxes[:, 2] = np.clip(bounding_boxes[:, 2], 0, self.model_width)
             scaled_xywh_boxes[:, 3] = np.clip(bounding_boxes[:, 3], 0, self.model_height)
 
-            unscaled_xywh_boxes[:, 0] = scaled_xywh_boxes[:, 0] * ratiow
-            unscaled_xywh_boxes[:, 1] = scaled_xywh_boxes[:, 1] * ratioh
+            unscaled_xywh_boxes[:, 0] = (scaled_xywh_boxes[:, 0] - padw) * ratiow
+            unscaled_xywh_boxes[:, 1] = (scaled_xywh_boxes[:, 1] - padh) * ratioh
             unscaled_xywh_boxes[:, 2] = scaled_xywh_boxes[:, 2] * ratiow
             unscaled_xywh_boxes[:, 3] = scaled_xywh_boxes[:, 3] * ratioh
 
@@ -298,18 +299,15 @@ class ObjectOnnxDetector(object):
     def SetDisplayTarget(self, targets) :
         self.priority_target = targets
 
-    def DetectFrame(self, srcimg, frame_resize=None) :
+    def DetectFrame(self, srcimg) :
         self.input_height, self.input_width = srcimg.shape[0],  srcimg.shape[1]
         score_thres = float(self.box_score)
         iou_thres = float(self.box_nms_iou)
 
-        if (frame_resize == None) :
-            model_size = self.model_width
-        else :
-            model_size = frame_resize
+        image, newh, neww, ratioh, ratiow, padh, padw = self.resize_image_format(srcimg)
+        print("test :", newh, neww, ratioh, ratiow, padh, padw, image.shape)
+        blob = cv2.dnn.blobFromImage(image, 1/255.0, (self.model_width, self.model_height), swapRB=True, crop=False)
 
-        image, newh, neww, ratioh, ratiow, padh, padw = self.resize_image_format(srcimg, model_size)
-        blob = cv2.dnn.blobFromImage(image, 1/255.0, (newh, neww), swapRB=True, crop=False)
         output_from_network = self.session.run(self.output_names, {self.input_names[0]:  blob})
 
         bounding_boxes, confidences, class_ids, mask_pred = self._process_box_output(output_from_network[0], score_thres, (32 if self.output_layers_count==2 else None) )
