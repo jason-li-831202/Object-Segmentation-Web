@@ -1,6 +1,6 @@
 .modelMenu {
 	width: 350px;
-    height: 450px;
+    height: 470px;
 	background-color: #355b5c69;
 	position: absolute;
 	right: 0;
@@ -54,13 +54,13 @@
 
 .optionTitle {
     color: #0eebff;
-    font-size: 10px;
+    font-size: 13px;
 }
 
 .optionList {
     color: #fff;
     text-size-adjust: auto;
-    font-size: 5px;
+    font-size: 13px;
 }
 
 .optionTitle, .optionList {

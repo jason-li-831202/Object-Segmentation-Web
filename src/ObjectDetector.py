@@ -55,7 +55,7 @@ class ObjectOnnxDetector(object):
         self.box_points = []
         self.mask_maps = []
         self.style = None
-        self.keep_ratio = True
+        self.keep_ratio = False
 
         classes_path = os.path.expanduser(self.classes_path)
         if (os.path.isfile(classes_path) is False):
@@ -129,7 +129,8 @@ class ObjectOnnxDetector(object):
                 box_predictions.append(np.stack([(x - 0.5 * w), (y - 0.5 * h), (x + 0.5 * w), (y + 0.5 * h)], axis=-1)) #x1, y1, x2, y2
         return box_predictions, confidences, class_ids, np.array(mask_predictions)
 
-    def _process_mask_output(self, mask_output, input_boxes, mask_predictions, indices) -> np.array:
+    def _process_mask_output(self, mask_output, input_boxes, mask_predictions, indices : list, pad_tuple : tuple) -> np.array:
+        padh, padw = pad_tuple
         if mask_predictions.shape[0] == 0:
             return []
         mask_output = np.squeeze(mask_output)
@@ -139,15 +140,16 @@ class ObjectOnnxDetector(object):
 
         masks = sigmoid(mask_predictions @ mask_output.reshape((num_mask, -1)))
         masks = masks.reshape((-1, mask_height, mask_width))
-        print("mask shape :", masks.shape)
+
         # Downscale the boxes to match the mask size
-        mask_boxes = self.rescale_boxes(input_boxes,
-                                   (self.input_height, self.input_width),
+        mask_boxes = self.__rescale_boxes(input_boxes,
+                                   (self.model_height, self.model_width),
                                    (mask_height, mask_width))
 
         # For every box/mask pair, get the mask map
-        mask_maps = np.zeros((len(indices), self.input_height, self.input_width))
-        blur_size = (int(self.input_width / mask_width), int(self.input_height / mask_height))
+        mask_maps = np.zeros((len(indices), self.model_height, self.model_width))
+        input_mask_maps = np.zeros((len(indices), self.input_height, self.input_width))
+        blur_size = (int(self.model_width / mask_width), int(self.model_height / mask_height))
         if len(indices) > 0:
             for i, indice in enumerate(indices):
                 scale_x1 = int(math.floor(mask_boxes[indice][0]) )
@@ -164,15 +166,18 @@ class ObjectOnnxDetector(object):
                 crop_mask = cv2.resize(scale_crop_mask,
                                 (x2 - x1, y2 - y1),
                                 interpolation=cv2.INTER_CUBIC)
-
                 crop_mask = cv2.blur(crop_mask, blur_size)
-
                 crop_mask = (crop_mask > 0.5).astype(np.uint8)
                 mask_maps[i, y1:y2, x1:x2] = crop_mask
-        return mask_maps
+
+                input_mask_maps[i] = cv2.resize(mask_maps[i,padh:-padh-1,padw:-padw-1],
+                                                (self.input_width, self.input_height), 
+                                                interpolation=cv2.INTER_CUBIC)
+
+        return input_mask_maps
     
     @staticmethod
-    def rescale_boxes(boxes, input_shape, image_shape):
+    def __rescale_boxes(boxes, input_shape, image_shape):
         # Rescale boxes to original image dimensions
         input_shape = np.array([input_shape[1], input_shape[0], input_shape[1], input_shape[0]])
         boxes = np.divide(boxes, input_shape, dtype=np.float32)
@@ -181,7 +186,7 @@ class ObjectOnnxDetector(object):
         return boxes
 
     @staticmethod
-    def adjust_boxes_ratio(bounding_box, ratio, stretch_type) :
+    def __adjust_boxes_ratio(bounding_box, ratio, stretch_type) :
         """ Adjust the aspect ratio of the box according to the orientation """
         xmin, ymin, width, height = bounding_box 
         width = int(width)
@@ -245,7 +250,9 @@ class ObjectOnnxDetector(object):
         ratioh, ratiow = srcimg.shape[0] / newh, srcimg.shape[1] / neww
         return img, newh, neww, ratioh, ratiow, padh, padw
 
-    def get_boxes_coordinate(self, bounding_boxes, ratiow, ratioh, padh, padw ) :
+    def get_boxes_coordinate(self, bounding_boxes, ratio_tuple:tuple, pad_tuple:tuple ) :
+        ratioh, ratiow = ratio_tuple
+        padh, padw = pad_tuple
         scaled_xyxy_boxes, scaled_xywh_boxes = np.copy(bounding_boxes), np.copy(bounding_boxes)
         unscaled_xyxy_boxes, unscaled_xywh_boxes = np.copy(bounding_boxes), np.copy(bounding_boxes)
 
@@ -287,7 +294,7 @@ class ObjectOnnxDetector(object):
                 except :
                     predicted_class = "unknown"
 
-                bounding_box = self.adjust_boxes_ratio(bounding_boxes[i], self.box_aspect_ratio, self.box_stretch)
+                bounding_box = self.__adjust_boxes_ratio(bounding_boxes[i], self.box_aspect_ratio, self.box_stretch)
 
                 xmin, ymin, xmax, ymax = list(map(int, bounding_box))
                 results.append([ymin, xmin, ymax, xmax, predicted_class])
@@ -296,29 +303,28 @@ class ObjectOnnxDetector(object):
     def SetDisplayStyle(self, engine) :
         self.style = engine
 
-    def SetDisplayTarget(self, targets) :
+    def SetDisplayTarget(self, targets : list) :
         self.priority_target = targets
 
-    def DetectFrame(self, srcimg) :
+    def DetectFrame(self, srcimg : cv2) :
         self.input_height, self.input_width = srcimg.shape[0],  srcimg.shape[1]
         score_thres = float(self.box_score)
         iou_thres = float(self.box_nms_iou)
 
         image, newh, neww, ratioh, ratiow, padh, padw = self.resize_image_format(srcimg)
-        print("test :", newh, neww, ratioh, ratiow, padh, padw, image.shape)
         blob = cv2.dnn.blobFromImage(image, 1/255.0, (self.model_width, self.model_height), swapRB=True, crop=False)
 
         output_from_network = self.session.run(self.output_names, {self.input_names[0]:  blob})
 
         bounding_boxes, confidences, class_ids, mask_pred = self._process_box_output(output_from_network[0], score_thres, (32 if self.output_layers_count==2 else None) )
 
-        scaled_xyxy_boxes, scaled_xywh_boxes, unscaled_xyxy_boxes, unscaled_xywh_boxes = self.get_boxes_coordinate( bounding_boxes, ratiow, ratioh, padh, padw)
+        scaled_xyxy_boxes, scaled_xywh_boxes, unscaled_xyxy_boxes, unscaled_xywh_boxes = self.get_boxes_coordinate( bounding_boxes, (ratioh, ratiow ), (padh, padw))
         
         self.box_points, indices = self.get_nms_results( unscaled_xywh_boxes, confidences, class_ids, score_thres, iou_thres)
         if self.output_layers_count==2 :
-            self.mask_maps = self._process_mask_output(output_from_network[1], unscaled_xyxy_boxes, mask_pred, indices)
+            self.mask_maps = self._process_mask_output(output_from_network[1], scaled_xyxy_boxes, mask_pred, indices, (padh, padw))
 
-    def DrawIdentifyOnFrame(self, frame_show, mask_alpha=0.3, detect=True, seg=False) :
+    def DrawIdentifyOnFrame(self, frame_show : cv2, mask_alpha : float = 0.3, detect : bool = True, seg : bool = False) :
         if (self.style != None) :
             frame_show = self.style(frame_show)
         mask_img = frame_show.copy()
@@ -340,7 +346,8 @@ class ObjectOnnxDetector(object):
                         cv2.rectangle(frame_show, (xmin, ymin), (xmax, ymax),  hex_to_rgba(self.colors_dict[label]), 2)
         return cv2.addWeighted(mask_img, mask_alpha, frame_show, 1 - mask_alpha, 0) 
       
-    def DrawIdentifyOverlayOnFrame(self, frame_overlap, frame_show, detect=True, seg=False) :
+    def DrawIdentifyOverlayOnFrame(self, frame_overlap : cv2, frame_show : cv2, detect : bool = True, seg : bool = False) :
+        frame_show = cv2.resize(frame_show, (self.input_width, self.input_height))
         mask_img = frame_show.copy()
         mask_binaray = np.zeros(( int(frame_show.shape[0]), int(frame_show.shape[1]), 3 ), np.uint8)
         mask_binaray = convert_3channel_add_alpha(mask_binaray, alpha=255)

@@ -149,6 +149,7 @@ docker run --rm --privileged --device="/dev/video0:/dev/video0" -t -p 8080:8080 
 
 * 2023/05/05 - Added images with downloadable transparent backgrounds.
 * 2023/11/22 - Fixed youtube_dl bug, and remove pafy package.
+* 2023/11/26 - Fixed custom diff model size.
 
 <h1 id="License">➤ License</h1>
 WiFi Analyzer is licensed under the GNU General Public License v3.0 (GPLv3).

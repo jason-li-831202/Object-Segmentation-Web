@@ -195,8 +195,8 @@ class VideoStreaming(object):
         end = time.time()
         print("loading background time (sec) : ", round(end-start, 2) )
 
-    def setViewTarget(self, targets : str) -> None:
-        if type(targets) == str:
+    def setViewTarget(self, targets : typing.Union[list, str]) -> None:
+        if isinstance(targets, list) or isinstance(targets, str) :
             self.MODEL.SetDisplayTarget(targets)
 
     def setViewStyle(self, style_name : str) -> None:
