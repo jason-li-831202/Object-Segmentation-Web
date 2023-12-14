@@ -93,10 +93,9 @@ class ObjectOnnxDetector(object):
     def _get_input_details(self):
         model_inputs = self.session.get_inputs()
         self.input_names = [model_inputs[i].name for i in range(len(model_inputs))]
-
+        self.input_types = np.float16 if 'float16' in model_inputs[0].type else np.float32
         self.model_shapes = model_inputs[0].shape
-        self.model_height = self.model_shapes[2]
-        self.model_width = self.model_shapes[3]
+        self.model_height, self.model_width = self.model_shapes[2], self.model_shapes[3]
 
     def _get_output_details(self):
         model_outputs = self.session.get_outputs()
@@ -162,7 +161,7 @@ class ObjectOnnxDetector(object):
                 x2 = int(math.ceil(input_boxes[indice][2]))
                 y2 = int(math.ceil(input_boxes[indice][3]))
 
-                scale_crop_mask = masks[indice][scale_y1:scale_y2, scale_x1:scale_x2]
+                scale_crop_mask = masks[indice][scale_y1:scale_y2, scale_x1:scale_x2].astype(np.float32)
                 crop_mask = cv2.resize(scale_crop_mask,
                                 (x2 - x1, y2 - y1),
                                 interpolation=cv2.INTER_CUBIC)
@@ -312,7 +311,7 @@ class ObjectOnnxDetector(object):
         iou_thres = float(self.box_nms_iou)
 
         image, newh, neww, ratioh, ratiow, padh, padw = self.resize_image_format(srcimg)
-        blob = cv2.dnn.blobFromImage(image, 1/255.0, (self.model_width, self.model_height), swapRB=True, crop=False)
+        blob = cv2.dnn.blobFromImage(image, 1/255.0, (self.model_width, self.model_height), swapRB=True, crop=False).astype(self.input_types)
 
         output_from_network = self.session.run(self.output_names, {self.input_names[0]:  blob})
 

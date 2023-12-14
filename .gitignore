@@ -22,5 +22,10 @@ models/yolov8n-coco.onnx
 models/yolov8n-seg-coco.onnx
 models/yolov8s-seg-coco.onnx
 models/yolov8l-coco.onnx
+models/Style/AnimeGANv2_Hayao.onnx
+models/Style/AnimeGANv2_Paprika.onnx
+models/Style/AnimeGANv2_Shinkai.onnx
+models/Style/AnimeGANv3_PortraitSketch.onnx
 demo/demo-video.mp4
 demo/github.pptx
+models/yolov8n-seg-coco_fp16.onnx

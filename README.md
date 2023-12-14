@@ -100,6 +100,13 @@ You can convert the YOLOv8-seg model to ONNX using the following Google Colab no
 
     [<div style="padding-left:70px;"><img src="./demo/config-menu.png" width=250px></div>](demo/)
 
+ * ***Quantize ONNX models*** :
+
+    Converting a model to use float16 instead of float32 can decrease the model size.
+    ```
+    python onnxQuantization.py -i <path-of-your-onnx-model>
+    ```
+
 * ***Run*** :
 
     ```

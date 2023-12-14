@@ -9,7 +9,7 @@ monkey.patch_all()
 from src.VideoStream import *
 
 model_config = {
-    "model_path": 'models/yolov8n-seg-coco.onnx', # model path
+    "model_path": 'models/yolov8n-seg-coco_fp16.onnx', # model path
     "classes_path" : 'models/coco_label.txt', # classes path
     "box_score" : 0.4,
     "box_nms_iou" : 0.45,
