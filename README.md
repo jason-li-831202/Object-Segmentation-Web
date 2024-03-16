@@ -53,7 +53,7 @@ After obtaining images through the camera, it is possible to separate the target
     ```
     pip install -r requirements.txt
     ```
-* **Note :**
+* <details><summary> <b>Note :</b> </summary>
 
     If you use a YouTube URL as the link to replace your background, please make sure to modify the following.
 
@@ -69,12 +69,20 @@ After obtaining images through the camera, it is possible to separate the target
     - > <strike>`self._likes = self._ydl_info['like_count']`</strike>
     - > <strike>`self._dislikes = self._ydl_info['dislike_count']`</strike>
 
+</details>
+
 
 <h1 id="ONNX-Model">➤ ONNX-model</h1>
 
 You can convert the YOLOv8-seg model to ONNX using the following Google Colab notebook :  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1oDEKz8FUCXtW-REhWy5N__PgTPjt3jm9?usp=sharing)
 - The License of the models is GPL-3.0 license: [License](https://github.com/ultralytics/ultralytics/blob/master/LICENSE)
 
+* ***Quantize ONNX models*** :
+
+    Converting a model to use float16 instead of float32 can decrease the model size.
+    ```
+    python onnxQuantization.py -i <path-of-your-onnx-model>
+    ```
 
 <h1 id="Examples">➤ Examples</h1>
 
@@ -99,13 +107,6 @@ You can convert the YOLOv8-seg model to ONNX using the following Google Colab no
    After running, the config information will appear above the menu : 
 
     [<div style="padding-left:70px;"><img src="./demo/config-menu.png" width=250px></div>](demo/)
-
- * ***Quantize ONNX models*** :
-
-    Converting a model to use float16 instead of float32 can decrease the model size.
-    ```
-    python onnxQuantization.py -i <path-of-your-onnx-model>
-    ```
 
 * ***Run*** :
 
