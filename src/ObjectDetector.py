@@ -30,6 +30,11 @@ class ObjectInfo:
 			temp = [self.x, self.y, self.width, self.height]
 		return temp
 
+	@property
+	def crop_mask(self) -> Optional[np.ndarray]:
+		if not isinstance(self.mask_map, np.ndarray): return None
+		return self.mask_map[self.y:self.y + self.height, self.x:self.x + self.width, np.newaxis]
+	
 	def pad(self, padding: int) -> ObjectInfo:
 		return ObjectInfo(
 			x=self.x - padding,
@@ -39,6 +44,7 @@ class ObjectInfo:
 			conf=self.conf,
 			label=self.label,
 			mask_map=self.mask_map)
+	
 	
 class ObjectOnnxDetector(OnnxBaseEngine):
 	_defaults = {
@@ -296,8 +302,8 @@ class ObjectOnnxDetector(OnnxBaseEngine):
 
 	@staticmethod
 	def scaler_mask(mask_maps, post_shape: tuple, pad_shape:tuple = (0, 0) ):
-		post_mask_maps = []
-		if (mask_maps != []) :
+		post_mask_maps = mask_maps.copy()
+		if ( isinstance(mask_maps, np.ndarray) ) :
 			newh, neww = post_shape
 			padh, padw = pad_shape
 
@@ -321,8 +327,7 @@ class ObjectOnnxDetector(OnnxBaseEngine):
 
 		box_info, label_info, mask_maps_info = self._process_output(output_from_network)
 
-		# TODO : 優化
-		box_info = self.scaler_coord(box_info, real_shape, src_shape, pad_shape)[3] # TODO: 2
+		box_info = self.scaler_coord(box_info, real_shape, src_shape, pad_shape)[3] 
 		mask_maps_info = self.scaler_mask(mask_maps_info, src_shape, pad_shape)
 
 		self._object_info = []
@@ -343,9 +348,9 @@ class ObjectOnnxDetector(OnnxBaseEngine):
 				mask_map = _info.mask_map
 
 				if (label in self.priority_target ) :
-					if seg and mask_map != []:
+					if seg and isinstance(mask_map, np.ndarray):
 						# Draw fill mask image
-						crop_mask = mask_map[ymin:ymax, xmin:xmax, np.newaxis]
+						crop_mask = _info.crop_mask 
 						crop_mask_img = mask_img[ymin:ymax, xmin:xmax]
 						crop_mask_img = crop_mask_img * (1 - crop_mask) + crop_mask * hex_to_rgba(self.colors_dict[label])
 						mask_img[ymin:ymax, xmin:xmax] = crop_mask_img
@@ -381,9 +386,9 @@ class ObjectOnnxDetector(OnnxBaseEngine):
 						frame_overlap[ymin:ymax, xmin:xmax] = mask_box_img
 
 					# Draw fill mask image
-					if (seg and mask_map != []):
+					if (seg and isinstance(mask_map, np.ndarray)):
 						mask_status = True
-						crop_mask = mask_map[ymin:ymax, xmin:xmax, np.newaxis]
+						crop_mask = _info.crop_mask 
 						crop_mask_img = mask_binaray[ymin:ymax, xmin:xmax]
 
 						snap[ymin:ymax, xmin:xmax] = crop_mask_img * (1 - crop_mask) + crop_mask
