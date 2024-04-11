@@ -7,7 +7,8 @@ import typing
 from PIL import Image, ImageSequence
 from enum import Enum
 
-from src.ObjectDetector import ObjectOnnxDetector, convert_3channel_add_alpha
+from src.utils import convert_3channel_add_alpha, hex_to_rgba
+from src.ObjectDetector import ObjectOnnxDetector
 from src.AnimeGAN import AnimeGAN
 
 class DisplayType(Enum):
@@ -71,7 +72,6 @@ class VideoStreaming(object):
         style_path = [_ for _ in os.listdir("./models/Style") if _.endswith(".onnx")]
         for type in style_path :
             self.style_dict.update({os.path.splitext(type)[0]: AnimeGAN('./models/Style/'+  type)})
-
 
     def initCamSettings(self) :
         print('*'*28)
@@ -201,10 +201,10 @@ class VideoStreaming(object):
 
     def setViewStyle(self, style_name : str) -> None:
         if (self.MODEL.style != None) :
-            self.MODEL.style.unload()
+            self.MODEL.style.clear_engine()
         self.MODEL.SetDisplayStyle( self.style_dict[style_name])
 
-    def show(self) -> bytes:
+    def show(self, debug: bool = False) -> bytes:
         while(self.CAM.isOpened()):
             ret, snap = self.CAM.read()
             snap = cv2.resize(snap, (int(self.sensorW), int(self.sensorH)))
@@ -255,10 +255,12 @@ class VideoStreaming(object):
                     cv2.putText(snap, label, (W//2, H//2), font, 2, color, 2)
 
                 snap = cv2.resize(snap, (int(self.displayW), int(self.displayH)))
-                frame = cv2.imencode('.png', snap)[1].tobytes()
-                yield (b'--frame\r\n'b'Content-Type: image/png\r\n\r\n' + frame + b'\r\n')
-                time.sleep(0.01)
-
+                if debug :
+                    yield snap
+                else :
+                    frame = cv2.imencode('.png', snap)[1].tobytes()
+                    yield (b'--frame\r\n'b'Content-Type: image/png\r\n\r\n' + frame + b'\r\n')
+                    time.sleep(0.01)
             else:
                 break
         print("video root [%s] is error. please check it." % self.cam_config['cam_id'])

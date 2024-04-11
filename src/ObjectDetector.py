@@ -1,381 +1,397 @@
+from __future__ import annotations
+
 import math
-import cv2
+import os, cv2
 import random
-import typing
 import numpy as np
-import onnxruntime as ort
-import os
+from typing import Tuple, List, Optional, Union
+from dataclasses import dataclass
 
-def convert_3channel_add_alpha(image, alpha=255):
-    b_channel, g_channel, r_channel = cv2.split(image)
-    alpha_channel = np.ones(b_channel.shape, dtype=b_channel.dtype) * alpha  # alpha通道每个像素点区间为[0,255], 0为完全透明，255是完全不透明
-    return cv2.merge((b_channel, g_channel, r_channel, alpha_channel))
-
-def hex_to_rgba(value, alpha=255):
-    value = value.lstrip('#')
-    lv = len(value)
-    return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3)) + (alpha,)
+from .AnimeGAN import AnimeGAN
+from .utils import OnnxBaseEngine, convert_3channel_add_alpha, hex_to_rgba
 
 def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+	return np.exp(x) / (1 +  np.exp(x)) # equal to 1 / (1 + np.exp(-x))
 
-class ObjectOnnxDetector(object):
-    _defaults = {
-        "model_path": None,
-        "classes_path" : None,
-        "box_aspect_ratio" : None,
-        "box_stretch" : None,
-        "box_score" : None,
-        "box_nms_iou" : None,
-    }
+@dataclass
+class ObjectInfo:
+	x: float
+	y: float
+	width: float
+	height: float
+	label: str
+	conf: float
+	mask_map: Optional[np.ndarray]
 
-    @classmethod
-    def set_defaults(cls, config) :
-        print('*'*28)
-        print('* Check model settings *')
-        print('*'*28)
-        for key in config:
-            print ('  ', key,'=', config[key])
-        cls._defaults = config
+	def tolist(self, format_type: str = "xyxy"):
+		if (format_type == "xyxy"):
+			temp = [self.x, self.y, self.x + self.width, self.y + self.height]
+		else :
+			temp = [self.x, self.y, self.width, self.height]
+		return temp
 
-    @classmethod
-    def check_defaults(cls):
-        return cls._defaults
-        
-    @classmethod
-    def get_defaults(cls, n):
-        if n in cls._defaults:
-            return cls._defaults[n]
-        else:
-            return "Unrecognized attribute name '" + n + "'"
+	def pad(self, padding: int) -> ObjectInfo:
+		return ObjectInfo(
+			x=self.x - padding,
+			y=self.y - padding,
+			width=self.width + 2 * padding,
+			height=self.height + 2 * padding,
+			conf=self.conf,
+			label=self.label,
+			mask_map=self.mask_map)
+	
+class ObjectOnnxDetector(OnnxBaseEngine):
+	_defaults = {
+		"model_path": None,
+		"classes_path" : None,
+		"box_aspect_ratio" : None,
+		"box_stretch" : None,
+		"box_score" : None,
+		"box_nms_iou" : None,
+	}
 
-    def __init__(self, **kwargs):
-        self.__dict__.update(self._defaults) # set up default values
-        self.__dict__.update(kwargs) # and update with user overrides
-        self.box_points = []
-        self.mask_maps = []
-        self.style = None
-        self.keep_ratio = False
+	def __init__(self, **kwargs):
+		OnnxBaseEngine.__init__(self)
+		self.__dict__.update(kwargs) # and update with user overrides
+		print("Detector Inference Version : ", self.providers)
 
-        classes_path = os.path.expanduser(self.classes_path)
-        if (os.path.isfile(classes_path) is False):
-            raise Exception("%s is not exist." % classes_path)
+		self._object_info = []
 
-        model_path = os.path.expanduser(self.model_path)
-        if (os.path.isfile(model_path) is False):
-            raise Exception("%s is not exist." % model_path)
-        assert model_path.endswith('.onnx'), 'Onnx Parameters must be a .onnx file.'
+		self.style = None
+		self.keep_ratio = True
+		self._get_class(self.classes_path)
+		self._get_model_details()
 
-        self._get_class(classes_path)
-        self._load_model_onnxruntime_version(model_path)
-        self._get_input_details()
-        self._get_output_details()
+	def _get_class(self, classes_path : str) -> None:
+		classes_path = os.path.expanduser(classes_path)
+		if (os.path.isfile(classes_path) is False):
+			raise Exception("%s is not exist." % classes_path)
+		
+		with open(classes_path) as f:
+			class_names = f.readlines()
+		self.class_names = [c.strip() for c in class_names]
+		self.priority_target = self.class_names
+		self.priority_target.append("unknown")
 
-    def _get_class(self, classes_path : str) -> None:
-        with open(classes_path) as f:
-            class_names = f.readlines()
-        self.class_names = [c.strip() for c in class_names]
-        self.priority_target = self.class_names
-        self.priority_target.append("unknown")
+		get_colors = list(map(lambda i:"#" +"%06x" % random.randint(0, 0xFFFFFF),range(len(self.class_names)) ))
+		self.colors_dict = dict(zip(list(self.class_names), get_colors))
+		self.colors_dict["unknown"] = '#ffffff'
 
-        get_colors = list(map(lambda i:"#" +"%06x" % random.randint(0, 0xFFFFFF),range(len(self.class_names)) ))
-        self.colors_dict = dict(zip(list(self.class_names), get_colors))
-        self.colors_dict["unknown"] = '#ffffff'
+	def _get_model_details(self):
+		self.model_in_shapes, self.model_in_names = self.get_engine_input_shape()
+		self.model_out_shapes, self.model_out_names = self.get_engine_output_shape()
 
-    def _load_model_onnxruntime_version(self, model_path : str) -> None:
-        if  ort.get_device() == 'GPU' and 'CUDAExecutionProvider' in  ort.get_available_providers():  # gpu 
-            self.providers = 'CUDAExecutionProvider'
-        else :
-            self.providers = 'CPUExecutionProvider'
-        self.session = ort.InferenceSession(model_path, providers= [self.providers] )
-        print("AutoLabel Inference Version : ", self.providers)
+		if len(self.model_out_shapes) ==2 :
+			# (N, 80[obj_conf] + 4[bbox] + 32[mask], -1), (N, 32[mask_num], mask_h, mask_w)
+			self.box_out_shape, self.mask_out_shape = self.model_out_shapes 
+		else :
+			# (N, 80[obj_conf] + 4[bbox], -1), ()
+			self.box_out_shape, self.mask_out_shape = self.model_out_shapes, []
+		self.model_height, self.model_width = self.model_in_shapes[0][2], self.model_in_shapes[0][3]
 
-    def _get_input_details(self):
-        model_inputs = self.session.get_inputs()
-        self.input_names = [model_inputs[i].name for i in range(len(model_inputs))]
-        self.input_types = np.float16 if 'float16' in model_inputs[0].type else np.float32
-        self.model_shapes = model_inputs[0].shape
-        self.model_height, self.model_width = self.model_shapes[2], self.model_shapes[3]
+	def _prepare_input(self, srcimg : cv2) -> Tuple[np.ndarray, Tuple[int, int], Tuple[int, int], Tuple[int, int]] :
+		self.input_height, self.input_width = srcimg.shape[0],  srcimg.shape[1]
 
-    def _get_output_details(self):
-        model_outputs = self.session.get_outputs()
-        self.output_names = [model_outputs[i].name for i in range(len(model_outputs))]
-        self.output_layers_count = len(self.output_names)
+		image, real_shape, src_shape, pad_shape = self.scaler_image(srcimg, (self.model_height, self.model_width), self.keep_ratio)
+		blob = cv2.dnn.blobFromImage(image, 1/255.0, (self.model_width, self.model_height), 
+										swapRB=True, crop=False).astype(self.engine_dtype)
 
-    def _process_box_output(self, box_output : np.array, conf_thres : int, num_masks : int =32) :
-        class_ids = []
-        confidences = []
-        box_predictions = []
-        mask_predictions = []
+		return blob, real_shape, src_shape, pad_shape
 
-        if (num_masks != None) :
-            num_classes = box_output.shape[1] - num_masks - 4
+	def _process_output(self, outputs: np.ndarray) -> Tuple[List[np.ndarray], List[str], List[Optional[np.ndarray]]]:
+		score_thres = float(self.box_score)
+		iou_thres = float(self.box_nms_iou)
+		if len(self.model_out_shapes) ==2 :
+			crood_outputs, mask_outputs = outputs
+		else :
+			crood_outputs, mask_outputs = outputs, []
+		
+		# box output (x, y, x, y)
+		_raw_boxes, _raw_class_confs, _raw_class_ids, _raw_mask_confs = self.__process_box_output(crood_outputs, score_thres, 
+																			(self.mask_out_shape[1] if self.mask_out_shape else None) )
+		_raw_masks = self.__process_mask_output(mask_outputs, _raw_mask_confs)
 
-        box_output = np.squeeze(box_output).T
-        for predictions in box_output:
-            if (num_masks != None) :
-                scores = predictions[4:4+num_classes]
-            else :
-                scores = predictions[4:]
-            classId = np.argmax(scores)
-            confidence = scores[classId]
-            if confidence > conf_thres :
-                if (num_masks != None) :
-                    mask_predictions.append(predictions[num_classes+4:])
-                x, y, w, h = predictions[0].item(), predictions[1].item(), predictions[2].item(), predictions[3].item() 
-                class_ids.append(classId)
-                confidences.append(float(confidence))
-                box_predictions.append(np.stack([(x - 0.5 * w), (y - 0.5 * h), (x + 0.5 * w), (y + 0.5 * h)], axis=-1)) #x1, y1, x2, y2
-        return box_predictions, confidences, class_ids, np.array(mask_predictions)
+		return self.__process_nms(_raw_boxes, _raw_class_confs, _raw_class_ids, 
+									_raw_masks, score_thres, iou_thres)
+	
+	def __process_box_output(self, box_output : np.ndarray, conf_thres : int, num_masks : int =32) -> Tuple[list, list, list, list]:
+		_raw_boxes = []
+		_raw_class_ids = []
+		_raw_class_confs = []
+		_raw_mask_confs = []
 
-    def _process_mask_output(self, mask_output, input_boxes, mask_predictions, indices : list, pad_tuple : tuple) -> np.array:
-        padh, padw = pad_tuple
-        if mask_predictions.shape[0] == 0:
-            return []
-        mask_output = np.squeeze(mask_output)
+		if (num_masks != None) :
+			num_classes = self.box_out_shape[1] - num_masks - 4
 
-        # Calculate the mask maps for each box
-        num_mask, mask_height, mask_width = mask_output.shape  # CHW
+		box_output = np.squeeze(box_output).T
+		for predictions in box_output:
+			if (num_masks != None) :
+				obj_cls_probs = predictions[4:4+num_classes]
+			else :
+				obj_cls_probs = predictions[4:]
 
-        masks = sigmoid(mask_predictions @ mask_output.reshape((num_mask, -1)))
-        masks = masks.reshape((-1, mask_height, mask_width))
+			classId = np.argmax(obj_cls_probs)
+			classConf = float(obj_cls_probs[classId])
+			if classConf > conf_thres :
+				if (num_masks != None) :
+					_raw_mask_confs.append(predictions[num_classes+4:])
+				x, y, w, h = predictions[0:4]
+				_raw_class_ids.append(classId)
+				_raw_class_confs.append(classConf)
+				_raw_boxes.append(np.stack([(x - 0.5 * w), (y - 0.5 * h), (x + 0.5 * w), (y + 0.5 * h)], axis=-1)) #x1, y1, x2, y2
 
-        # Downscale the boxes to match the mask size
-        mask_boxes = self.__rescale_boxes(input_boxes,
-                                   (self.model_height, self.model_width),
-                                   (mask_height, mask_width))
+		return _raw_boxes, _raw_class_confs, _raw_class_ids, _raw_mask_confs
 
-        # For every box/mask pair, get the mask map
-        mask_maps = np.zeros((len(indices), self.model_height, self.model_width))
-        input_mask_maps = np.zeros((len(indices), self.input_height, self.input_width))
-        blur_size = (int(self.model_width / mask_width), int(self.model_height / mask_height))
-        if len(indices) > 0:
-            for i, indice in enumerate(indices):
-                scale_x1 = int(math.floor(mask_boxes[indice][0]) )
-                scale_y1 = int(math.floor(mask_boxes[indice][1]) )
-                scale_x2 = int(math.ceil(mask_boxes[indice][2]) )
-                scale_y2 = int(math.ceil(mask_boxes[indice][3]) )
+	def __process_mask_output(self, mask_output : np.ndarray, mask_preds: list) -> Union[np.ndarray, list]:
+		if mask_preds == []:
+			return []
+		mask_output = np.squeeze(mask_output)
 
-                x1 = int(math.floor(input_boxes[indice][0]))
-                y1 = int(math.floor(input_boxes[indice][1]))
-                x2 = int(math.ceil(input_boxes[indice][2]))
-                y2 = int(math.ceil(input_boxes[indice][3]))
+		# Calculate the mask maps for each box
+		_, num_mask, mask_height, mask_width = self.mask_out_shape
+		_raw_mask = sigmoid(mask_preds @ mask_output.reshape((num_mask, -1)))
 
-                scale_crop_mask = masks[indice][scale_y1:scale_y2, scale_x1:scale_x2].astype(np.float32)
-                crop_mask = cv2.resize(scale_crop_mask,
-                                (x2 - x1, y2 - y1),
-                                interpolation=cv2.INTER_CUBIC)
-                crop_mask = cv2.blur(crop_mask, blur_size)
-                crop_mask = (crop_mask > 0.5).astype(np.uint8)
-                mask_maps[i, y1:y2, x1:x2] = crop_mask
+		_raw_mask = _raw_mask.reshape((-1, mask_height, mask_width))
+		return _raw_mask
 
-                input_mask_maps[i] = cv2.resize(mask_maps[i,padh:-padh-1,padw:-padw-1],
-                                                (self.input_width, self.input_height), 
-                                                interpolation=cv2.INTER_CUBIC)
+	def __process_nms(self, raw_boxes, raw_confs, raw_ids, raw_masks, score: float, iou: float) -> Tuple[List[np.ndarray], List[str], List[Optional[np.ndarray]]]:
+		if (raw_masks != []):
+			# Downscale the boxes to match the mask size
+			_, num_mask, mask_height, mask_width = self.mask_out_shape
+			pre_boxes, _, post_boxes,_ = self.scaler_coord(raw_boxes, 
+															(self.model_height, self.model_width), 
+															(mask_height, mask_width), 
+															(0,0))
+		else :
+			pre_boxes, _, _, _ = self.scaler_coord(raw_boxes, 
+													(self.model_height, self.model_width))
 
-        return input_mask_maps
-    
-    @staticmethod
-    def __rescale_boxes(boxes, input_shape, image_shape):
-        # Rescale boxes to original image dimensions
-        input_shape = np.array([input_shape[1], input_shape[0], input_shape[1], input_shape[0]])
-        boxes = np.divide(boxes, input_shape, dtype=np.float32)
-        boxes *= np.array([image_shape[1], image_shape[0], image_shape[1], image_shape[0]])
+		indices = cv2.dnn.NMSBoxes(pre_boxes, raw_confs, score, iou) 
+		model_coords = []
+		model_classes = []
+		model_mask_maps = [] if (raw_masks == []) else np.zeros((len(indices), self.model_height, self.model_width))
+		if len(indices) > 0:
+			for idx, indice in enumerate(indices):
+				# Get class names 
+				try :
+					pred_class = self.class_names[raw_ids[indice]]
+				except :
+					pred_class = "unknown"
+				pred_conf = raw_confs[indice]
+				model_classes.append((pred_class, pred_conf))
 
-        return boxes
+				# Get coords
+				pred_box = self.__adjust_boxes_ratio(pre_boxes[indice], self.box_aspect_ratio, self.box_stretch)
+				xmin, ymin, xmax, ymax = pred_box
+				model_coords.append(np.stack([xmin, ymin, xmax, ymax], axis=-1))
+				
+				# Get masks (For every box/mask pair, get the mask map)
+				if (raw_masks != []):
+					mask_xmin, mask_ymin, mask_xmax, mask_ymax = post_boxes[indice]
+					pred_crop_mask = raw_masks[indice][mask_ymin:mask_ymax, mask_xmin:mask_xmax].astype(np.float32)
+					model_crop_mask = cv2.resize(pred_crop_mask,
+												(xmax - xmin, ymax - ymin),
+												interpolation=cv2.INTER_CUBIC)
+					model_crop_mask = (model_crop_mask > 0.5).astype(np.uint8)
+					model_mask_maps[idx, ymin:ymax, xmin:xmax] = model_crop_mask
+				else :
+					model_mask_maps.append(None)
+		return model_coords, model_classes, model_mask_maps
+	
+	@staticmethod
+	def __adjust_boxes_ratio(bounding_box, ratio, stretch_type) :
+		""" Adjust the aspect ratio of the box according to the orientation """
+		xmin, ymin, xmax, ymax = bounding_box 
+		width = int(xmax - xmin)
+		height = int(ymax - ymin)
 
-    @staticmethod
-    def __adjust_boxes_ratio(bounding_box, ratio, stretch_type) :
-        """ Adjust the aspect ratio of the box according to the orientation """
-        xmin, ymin, width, height = bounding_box 
-        width = int(width)
-        height = int(height)
-        xmax = xmin + width
-        ymax = ymin + height
-        if (ratio != None) :
-            ratio = float(ratio)
-        else :
-            return (xmin, ymin, xmax, ymax)
-        
-        center = ( (xmin + xmax) / 2, (ymin + ymax) / 2 )
-        if (stretch_type == "居中水平") :
-            # print("test : 居中水平")
-            changewidth = int(height * (1/ratio))
-            xmin = center[0] - changewidth/2
-            xmax = xmin + changewidth
-        elif (stretch_type == "居中垂直") :
-            # print("test : 居中垂直")
-            changeheight =  int(width * ratio)
-            ymin = center[1] - (changeheight/2)
-            ymax = ymin + changeheight
-        elif (stretch_type == "向下") : 
-            # print("test : 向下")
-            changeheight =  int(width * ratio)
-            ymax = ymin + changeheight
-        elif (stretch_type == "向上") :
-            # print("test : 向上")
-            changeheight = int( width * ratio)
-            ymin =ymax - changeheight
-        elif (stretch_type == "向左") :
-            # print("test : 向左")
-            changewidth = int(height * (1/ratio))
-            xmin =xmax - changewidth
-        elif (stretch_type == "向右") :
-            # print("test : 向右")
-            changewidth = int(height * (1/ratio))
-            xmax = xmin + changewidth
-        else :
-            print("stretch_type not defined.")
-        return (xmin, ymin, xmax, ymax)
-    
-    def resize_image_format(self, srcimg):
-        padh, padw, newh, neww = 0, 0, self.model_height, self.model_width
-        if self.keep_ratio and srcimg.shape[0] != srcimg.shape[1]:
-            hw_scale = srcimg.shape[0] / srcimg.shape[1]
-            if hw_scale > 1:
-                newh, neww = self.model_height, int(self.model_height / hw_scale)
-                img = cv2.resize(srcimg, (neww, newh), interpolation=cv2.INTER_CUBIC)
-                padw = int((self.model_width - neww) * 0.5)
-                img = cv2.copyMakeBorder(img, 0, 0, padw, self.model_width - neww - padw, cv2.BORDER_CONSTANT,
-                                         value=0)  # add border
-            else:
-                newh, neww = int(self.model_width * hw_scale), self.model_width
-                img = cv2.resize(srcimg, (neww, newh), interpolation=cv2.INTER_CUBIC)
-                padh = int((self.model_height - newh) * 0.5)
-                img = cv2.copyMakeBorder(img, padh, self.model_height - newh - padh, 0, 0, cv2.BORDER_CONSTANT, value=0)
-        else:
-            img = cv2.resize(srcimg, (self.model_width, self.model_height), interpolation=cv2.INTER_CUBIC)
+		if (ratio != None) :
+			ratio = float(ratio)
+		else :
+			return (xmin, ymin, xmax, ymax)
+		
+		center = ( (xmin + xmax) / 2, (ymin + ymax) / 2 )
+		if (stretch_type == "居中水平") :
+			# print("test : 居中水平")
+			changewidth = int(height * (1/ratio))
+			xmin = center[0] - changewidth/2
+			xmax = xmin + changewidth
+		elif (stretch_type == "居中垂直") :
+			# print("test : 居中垂直")
+			changeheight =  int(width * ratio)
+			ymin = center[1] - (changeheight/2)
+			ymax = ymin + changeheight
+		elif (stretch_type == "向下") : 
+			# print("test : 向下")
+			changeheight =  int(width * ratio)
+			ymax = ymin + changeheight
+		elif (stretch_type == "向上") :
+			# print("test : 向上")
+			changeheight = int( width * ratio)
+			ymin =ymax - changeheight
+		elif (stretch_type == "向左") :
+			# print("test : 向左")
+			changewidth = int(height * (1/ratio))
+			xmin =xmax - changewidth
+		elif (stretch_type == "向右") :
+			# print("test : 向右")
+			changewidth = int(height * (1/ratio))
+			xmax = xmin + changewidth
+		else :
+			print("stretch_type not defined.")
+		return (xmin, ymin, xmax, ymax)
+	
+	@staticmethod
+	def scaler_image(srcimg: np.ndarray, output_size: Tuple, keep_ratio: bool = False) -> Tuple[np.ndarray, Tuple[int, int], Tuple[int, int], Tuple[int, int]]:
+		oldh, oldw = srcimg.shape[0], srcimg.shape[1]
+		padh, padw, newh, neww = 0, 0, *output_size # (h, w)
+		if keep_ratio and srcimg.shape[0] != srcimg.shape[1]:
+			hw_scale = srcimg.shape[0] / srcimg.shape[1]
+			if hw_scale > 1:
+				newh, neww = output_size[0], int(output_size[0] / hw_scale)
+				img = cv2.resize(srcimg, (neww, newh), interpolation=cv2.INTER_CUBIC)
+				padw = int((output_size[1] - neww) * 0.5)
+				img = cv2.copyMakeBorder(img, 0, 0, padw, output_size[1] - neww - padw, cv2.BORDER_CONSTANT,
+										 value=0)  # add border
+			else:
+				newh, neww = int(output_size[1] * hw_scale), output_size[1]
+				img = cv2.resize(srcimg, (neww, newh), interpolation=cv2.INTER_CUBIC)
+				padh = int((output_size[0] - newh) * 0.5)
+				img = cv2.copyMakeBorder(img, padh, output_size[0]  - newh - padh, 0, 0, cv2.BORDER_CONSTANT, value=0)
+		else:
+			img = cv2.resize(srcimg, (output_size[0] , output_size[0] ), interpolation=cv2.INTER_CUBIC)
+		return img, (newh, neww), (oldh, oldw), (padh, padw)
 
-        ratioh, ratiow = srcimg.shape[0] / newh, srcimg.shape[1] / neww
-        return img, newh, neww, ratioh, ratiow, padh, padw
+	@staticmethod
+	def scaler_coord(bboxes, pre_shape: tuple = (0, 0), post_shape: tuple = (0, 0),  pad_shape:tuple = (0, 0) ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] :
+		pre_xyxy_boxes, pre_xywh_boxes, post_xyxy_boxes, post_xywh_boxes = [np.copy([])]*4
+		if (bboxes != []) :
+			newh, neww = post_shape
+			oldh, oldw = pre_shape
+			padh, padw = pad_shape
+			ratioh, ratiow = newh / oldh,  neww / oldw
+			bboxes = np.vstack(bboxes)
 
-    def get_boxes_coordinate(self, bounding_boxes, ratio_tuple:tuple, pad_tuple:tuple ) :
-        ratioh, ratiow = ratio_tuple
-        padh, padw = pad_tuple
-        scaled_xyxy_boxes, scaled_xywh_boxes = np.copy(bounding_boxes), np.copy(bounding_boxes)
-        unscaled_xyxy_boxes, unscaled_xywh_boxes = np.copy(bounding_boxes), np.copy(bounding_boxes)
+			# xyxy format
+			pre_xyxy_boxes = np.copy(bboxes)
+			pre_xyxy_boxes[:, 0] =  np.clip(bboxes[:, 0], 0, oldw + 2*padw)
+			pre_xyxy_boxes[:, 1] =  np.clip(bboxes[:, 1], 0, oldh + 2*padh)
+			pre_xyxy_boxes[:, 2] =  np.clip(bboxes[:, 2], 0, oldw + 2*padw)
+			pre_xyxy_boxes[:, 3] =  np.clip(bboxes[:, 3], 0, oldh + 2*padh)
 
-        if (bounding_boxes != []) :
-            bounding_boxes = np.vstack(bounding_boxes)
+			post_xyxy_boxes = np.copy(bboxes)
+			post_xyxy_boxes[:, 0] = np.clip((bboxes[:, 0] - padw) * ratiow, 0, neww)
+			post_xyxy_boxes[:, 1] = np.clip((bboxes[:, 1] - padh) * ratioh, 0, newh)
+			post_xyxy_boxes[:, 2] = np.clip((bboxes[:, 2] - padw) * ratiow, 0, neww)
+			post_xyxy_boxes[:, 3] = np.clip((bboxes[:, 3] - padh) * ratioh, 0, newh)
 
-            # xyxy format
-            scaled_xyxy_boxes[:, 0] =  np.clip(bounding_boxes[:, 0], 0, self.model_width)
-            scaled_xyxy_boxes[:, 1] =  np.clip(bounding_boxes[:, 1], 0, self.model_height)
-            scaled_xyxy_boxes[:, 2] =  np.clip(bounding_boxes[:, 2], 0, self.model_width)
-            scaled_xyxy_boxes[:, 3] =  np.clip(bounding_boxes[:, 3], 0, self.model_height)
+			# xywh format
+			pre_xywh_boxes = np.copy(pre_xyxy_boxes)
+			pre_xywh_boxes[:, 2:4] = pre_xywh_boxes[:, 2:4] - pre_xywh_boxes[:, 0:2]
 
-            unscaled_xyxy_boxes[:, 0] = np.clip((scaled_xyxy_boxes[:, 0] - padw) * ratiow, 0, self.input_width)
-            unscaled_xyxy_boxes[:, 1] = np.clip((scaled_xyxy_boxes[:, 1] - padh) * ratioh, 0, self.input_height)
-            unscaled_xyxy_boxes[:, 2] = np.clip(scaled_xyxy_boxes[:, 2] * ratiow, 0, self.input_width)
-            unscaled_xyxy_boxes[:, 3] = np.clip(scaled_xyxy_boxes[:, 3] * ratioh, 0, self.input_height)
+			post_xywh_boxes = np.copy(post_xyxy_boxes)
+			post_xywh_boxes[:, 2:4] = post_xywh_boxes[:, 2:4] - post_xywh_boxes[:, 0:2]
+		
+		return pre_xyxy_boxes.astype(int), pre_xywh_boxes.astype(int), post_xyxy_boxes.astype(int), post_xywh_boxes.astype(int)
 
-            # xywh format
-            bounding_boxes[:, 2:4] = bounding_boxes[:, 2:4] - bounding_boxes[:, 0:2]
-            scaled_xywh_boxes[:, 0] = np.clip(bounding_boxes[:, 0], 0, self.model_width)
-            scaled_xywh_boxes[:, 1] = np.clip(bounding_boxes[:, 1], 0, self.model_height)
-            scaled_xywh_boxes[:, 2] = np.clip(bounding_boxes[:, 2], 0, self.model_width)
-            scaled_xywh_boxes[:, 3] = np.clip(bounding_boxes[:, 3], 0, self.model_height)
+	@staticmethod
+	def scaler_mask(mask_maps, post_shape: tuple, pad_shape:tuple = (0, 0) ):
+		post_mask_maps = []
+		if (mask_maps != []) :
+			newh, neww = post_shape
+			padh, padw = pad_shape
 
-            unscaled_xywh_boxes[:, 0] = (scaled_xywh_boxes[:, 0] - padw) * ratiow
-            unscaled_xywh_boxes[:, 1] = (scaled_xywh_boxes[:, 1] - padh) * ratioh
-            unscaled_xywh_boxes[:, 2] = scaled_xywh_boxes[:, 2] * ratiow
-            unscaled_xywh_boxes[:, 3] = scaled_xywh_boxes[:, 3] * ratioh
+			post_mask_maps = np.zeros((mask_maps.shape[0], newh, neww))
+			for idx, mask_map in enumerate(mask_maps):
+				post_mask_maps[idx] = cv2.resize(mask_map[padh:-padh-1, padw:-padw-1],
+												(neww, newh), 
+												interpolation=cv2.INTER_CUBIC)
+		return post_mask_maps
+	
+	def SetDisplayStyle(self, engine: AnimeGAN) -> None:
+		self.style = engine
 
-        return scaled_xyxy_boxes, scaled_xywh_boxes, unscaled_xyxy_boxes, unscaled_xywh_boxes
+	def SetDisplayTarget(self, targets : list) -> None:
+		self.priority_target = targets
 
-    def get_nms_results(self, bounding_boxes, confidences, class_ids, score, iou):
-        results = []
-        indices = cv2.dnn.NMSBoxes(bounding_boxes, confidences, score, iou) 
-        if len(indices) > 0:
-            for i in indices:
-                try :
-                    predicted_class = self.class_names[class_ids[i]]
-                except :
-                    predicted_class = "unknown"
+	def DetectFrame(self, srcimg : cv2) -> None:
+		input_tensor, real_shape, src_shape, pad_shape = self._prepare_input(srcimg)
 
-                bounding_box = self.__adjust_boxes_ratio(bounding_boxes[i], self.box_aspect_ratio, self.box_stretch)
+		output_from_network = self.engine_inference(input_tensor)
 
-                xmin, ymin, xmax, ymax = list(map(int, bounding_box))
-                results.append([ymin, xmin, ymax, xmax, predicted_class])
-        return results, indices
+		box_info, label_info, mask_maps_info = self._process_output(output_from_network)
 
-    def SetDisplayStyle(self, engine) :
-        self.style = engine
+		# TODO : 優化
+		box_info = self.scaler_coord(box_info, real_shape, src_shape, pad_shape)[3] # TODO: 2
+		mask_maps_info = self.scaler_mask(mask_maps_info, src_shape, pad_shape)
 
-    def SetDisplayTarget(self, targets : list) :
-        self.priority_target = targets
+		self._object_info = []
+		for bbox, label, mask in zip(box_info, label_info, mask_maps_info):
+			self._object_info.append(ObjectInfo(*bbox, label=label[0],
+									  				  conf=label[1],
+													  mask_map=mask))
 
-    def DetectFrame(self, srcimg : cv2) :
-        self.input_height, self.input_width = srcimg.shape[0],  srcimg.shape[1]
-        score_thres = float(self.box_score)
-        iou_thres = float(self.box_nms_iou)
+	def DrawIdentifyOnFrame(self, frame_show : cv2, mask_alpha : float = 0.3, detect : bool = True, seg : bool = False) -> cv2:
+		if (self.style != None) :
+			frame_show = self.style(frame_show)
+		mask_img = frame_show.copy()
 
-        image, newh, neww, ratioh, ratiow, padh, padw = self.resize_image_format(srcimg)
-        blob = cv2.dnn.blobFromImage(image, 1/255.0, (self.model_width, self.model_height), swapRB=True, crop=False).astype(self.input_types)
+		if ( len(self._object_info) != 0 )  :
+			for index, _info in enumerate(self._object_info):
+				xmin, ymin, xmax, ymax = _info.tolist()
+				label = _info.label
+				mask_map = _info.mask_map
 
-        output_from_network = self.session.run(self.output_names, {self.input_names[0]:  blob})
+				if (label in self.priority_target ) :
+					if seg and mask_map != []:
+						# Draw fill mask image
+						crop_mask = mask_map[ymin:ymax, xmin:xmax, np.newaxis]
+						crop_mask_img = mask_img[ymin:ymax, xmin:xmax]
+						crop_mask_img = crop_mask_img * (1 - crop_mask) + crop_mask * hex_to_rgba(self.colors_dict[label])
+						mask_img[ymin:ymax, xmin:xmax] = crop_mask_img
 
-        bounding_boxes, confidences, class_ids, mask_pred = self._process_box_output(output_from_network[0], score_thres, (32 if self.output_layers_count==2 else None) )
+					if detect :
+						cv2.putText(frame_show, label, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hex_to_rgba(self.colors_dict[label]), 2)
+						cv2.rectangle(frame_show, (xmin, ymin), (xmax, ymax),  hex_to_rgba(self.colors_dict[label]), 2)
+		return cv2.addWeighted(mask_img, mask_alpha, frame_show, 1 - mask_alpha, 0) 
+	  
+	def DrawIdentifyOverlayOnFrame(self, frame_overlap : cv2, frame_show : cv2, detect : bool = True, seg : bool = False) -> cv2:
+		frame_show = cv2.resize(frame_show, (self.input_width, self.input_height))
+		mask_img = frame_show.copy()
+		mask_status = False
+		mask_binaray = np.zeros(( int(frame_show.shape[0]), int(frame_show.shape[1]), 3 ), np.uint8)
+		mask_binaray = convert_3channel_add_alpha(mask_binaray, alpha=255)
 
-        scaled_xyxy_boxes, scaled_xywh_boxes, unscaled_xyxy_boxes, unscaled_xywh_boxes = self.get_boxes_coordinate( bounding_boxes, (ratioh, ratiow ), (padh, padw))
-        
-        self.box_points, indices = self.get_nms_results( unscaled_xywh_boxes, confidences, class_ids, score_thres, iou_thres)
-        if self.output_layers_count==2 :
-            self.mask_maps = self._process_mask_output(output_from_network[1], scaled_xyxy_boxes, mask_pred, indices, (padh, padw))
+		if ( len(self._object_info) != 0 )  :
+			for index, _info in enumerate(self._object_info):
+				xmin, ymin, xmax, ymax = _info.tolist()
+				label = _info.label
+				mask_map = _info.mask_map
 
-    def DrawIdentifyOnFrame(self, frame_show : cv2, mask_alpha : float = 0.3, detect : bool = True, seg : bool = False) :
-        if (self.style != None) :
-            frame_show = self.style(frame_show)
-        mask_img = frame_show.copy()
+				snap = np.zeros(( int(frame_show.shape[0]), int(frame_show.shape[1]), 4 ), np.uint8)
+				if (label in self.priority_target ) :
 
-        if ( len(self.box_points) != 0 )  :
-            for index, box in enumerate(self.box_points):
-                ymin, xmin, ymax, xmax, label = box
+					mask_box_img = frame_overlap[ymin:ymax, xmin:xmax]
+					if (self.style != None) :
+						mask_box_img = self.style(mask_box_img)
 
-                if (label in self.priority_target ) :
-                    if seg and self.mask_maps!= []:
-                        # Draw fill mask image
-                        crop_mask = self.mask_maps[index][ymin:ymax, xmin:xmax, np.newaxis]
-                        crop_mask_img = mask_img[ymin:ymax, xmin:xmax]
-                        crop_mask_img = crop_mask_img * (1 - crop_mask) + crop_mask * hex_to_rgba(self.colors_dict[label])
-                        mask_img[ymin:ymax, xmin:xmax] = crop_mask_img
+					if (detect) :    
+						frame_show[ymin:ymax, xmin:xmax] = mask_box_img
+					else :
+						frame_overlap[ymin:ymax, xmin:xmax] = mask_box_img
 
-                    if detect :
-                        cv2.putText(frame_show, label, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hex_to_rgba(self.colors_dict[label]), 2)
-                        cv2.rectangle(frame_show, (xmin, ymin), (xmax, ymax),  hex_to_rgba(self.colors_dict[label]), 2)
-        return cv2.addWeighted(mask_img, mask_alpha, frame_show, 1 - mask_alpha, 0) 
-      
-    def DrawIdentifyOverlayOnFrame(self, frame_overlap : cv2, frame_show : cv2, detect : bool = True, seg : bool = False) :
-        frame_show = cv2.resize(frame_show, (self.input_width, self.input_height))
-        mask_img = frame_show.copy()
-        mask_binaray = np.zeros(( int(frame_show.shape[0]), int(frame_show.shape[1]), 3 ), np.uint8)
-        mask_binaray = convert_3channel_add_alpha(mask_binaray, alpha=255)
+					# Draw fill mask image
+					if (seg and mask_map != []):
+						mask_status = True
+						crop_mask = mask_map[ymin:ymax, xmin:xmax, np.newaxis]
+						crop_mask_img = mask_binaray[ymin:ymax, xmin:xmax]
 
-        if ( len(self.box_points) != 0 )  :
-            for index, box in enumerate(self.box_points):
-                snap = np.zeros(( int(frame_show.shape[0]), int(frame_show.shape[1]), 4 ), np.uint8)
-                ymin, xmin, ymax, xmax, label = box
-                if (label in self.priority_target ) :
+						snap[ymin:ymax, xmin:xmax] = crop_mask_img * (1 - crop_mask) + crop_mask
+						mask_binaray += snap
 
-                    mask_box_img = frame_overlap[ymin:ymax, xmin:xmax]
-                    if (self.style != None) :
-                        mask_box_img = self.style(mask_box_img)
-
-                    if (detect) :    
-                        frame_show[ymin:ymax, xmin:xmax] = mask_box_img
-                    else :
-                        frame_overlap[ymin:ymax, xmin:xmax] = mask_box_img
-
-                    # Draw fill mask image
-                    if (seg and self.mask_maps!= []):
-                        crop_mask = self.mask_maps[index][ymin:ymax, xmin:xmax, np.newaxis]
-                        crop_mask_img = mask_binaray[ymin:ymax, xmin:xmax]
-
-                        snap[ymin:ymax, xmin:xmax] = crop_mask_img * (1 - crop_mask) + crop_mask
-                        mask_binaray += snap
-            # cv2.waitKey(33)
-            if (seg and self.mask_maps!= []):
-                mask_img[mask_binaray[:,:,0] >= 1] = [0, 0, 0, 0]
-                frame_overlap[mask_binaray[:,:,0] < 1] = [0, 0, 0, 0]
-                frame_show = mask_img + frame_overlap
-        return frame_show
+			if (seg and mask_status):
+				mask_img[mask_binaray[:,:,0] >= 1] = [0, 0, 0, 0]
+				frame_overlap[mask_binaray[:,:,0] < 1] = [0, 0, 0, 0]
+				frame_show = mask_img + frame_overlap
+		return frame_show
+	
