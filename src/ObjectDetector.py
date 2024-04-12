@@ -34,7 +34,14 @@ class ObjectInfo:
 	def crop_mask(self) -> Optional[np.ndarray]:
 		if not isinstance(self.mask_map, np.ndarray): return None
 		return self.mask_map[self.y:self.y + self.height, self.x:self.x + self.width, np.newaxis]
-	
+
+	@property
+	def polygon_mask(self) -> Optional[np.ndarray]:
+		if not isinstance(self.mask_map, np.ndarray): return None
+		_, binary_mask = cv2.threshold(self.mask_map, 1, 255, cv2.THRESH_BINARY)
+		contours, _ = cv2.findContours(binary_mask.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+		return contours
+
 	def pad(self, padding: int) -> ObjectInfo:
 		return ObjectInfo(
 			x=self.x - padding,
@@ -76,8 +83,8 @@ class ObjectOnnxDetector(OnnxBaseEngine):
 		with open(classes_path) as f:
 			class_names = f.readlines()
 		self.class_names = [c.strip() for c in class_names]
-		self.priority_target = self.class_names
-		self.priority_target.append("unknown")
+		self.display_target = self.class_names
+		self.display_target.append("unknown")
 
 		get_colors = list(map(lambda i:"#" +"%06x" % random.randint(0, 0xFFFFFF),range(len(self.class_names)) ))
 		self.colors_dict = dict(zip(list(self.class_names), get_colors))
@@ -318,7 +325,7 @@ class ObjectOnnxDetector(OnnxBaseEngine):
 		self.style = engine
 
 	def SetDisplayTarget(self, targets : list) -> None:
-		self.priority_target = targets
+		self.display_target = targets
 
 	def DetectFrame(self, srcimg : cv2) -> None:
 		input_tensor, real_shape, src_shape, pad_shape = self._prepare_input(srcimg)
@@ -347,20 +354,26 @@ class ObjectOnnxDetector(OnnxBaseEngine):
 				label = _info.label
 				mask_map = _info.mask_map
 
-				if (label in self.priority_target ) :
+				if (label in self.display_target ) :
+
+					if detect :
+						cv2.putText(frame_show, label, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hex_to_rgba(self.colors_dict[label]), 2)
+						cv2.rectangle(frame_show, (xmin, ymin), (xmax, ymax),  hex_to_rgba(self.colors_dict[label]), 2)
+
 					if seg and isinstance(mask_map, np.ndarray):
 						# Draw fill mask image
 						crop_mask = _info.crop_mask 
 						crop_mask_img = mask_img[ymin:ymax, xmin:xmax]
 						crop_mask_img = crop_mask_img * (1 - crop_mask) + crop_mask * hex_to_rgba(self.colors_dict[label])
 						mask_img[ymin:ymax, xmin:xmax] = crop_mask_img
+						cv2.drawContours(frame_show, _info.polygon_mask, -1, hex_to_rgba(self.colors_dict[label]), 1, lineType=cv2.LINE_AA) # cv2.FILLED
 
-					if detect :
-						cv2.putText(frame_show, label, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hex_to_rgba(self.colors_dict[label]), 2)
-						cv2.rectangle(frame_show, (xmin, ymin), (xmax, ymax),  hex_to_rgba(self.colors_dict[label]), 2)
 		return cv2.addWeighted(mask_img, mask_alpha, frame_show, 1 - mask_alpha, 0) 
 	  
 	def DrawIdentifyOverlayOnFrame(self, frame_overlap : cv2, frame_show : cv2, detect : bool = True, seg : bool = False) -> cv2:
+		assert detect!=seg, "both mode can't together use it."
+		if (self.style != None) :
+			frame_overlap = self.style(frame_overlap)
 		frame_show = cv2.resize(frame_show, (self.input_width, self.input_height))
 		mask_img = frame_show.copy()
 		mask_status = False
@@ -374,16 +387,10 @@ class ObjectOnnxDetector(OnnxBaseEngine):
 				mask_map = _info.mask_map
 
 				snap = np.zeros(( int(frame_show.shape[0]), int(frame_show.shape[1]), 4 ), np.uint8)
-				if (label in self.priority_target ) :
-
-					mask_box_img = frame_overlap[ymin:ymax, xmin:xmax]
-					if (self.style != None) :
-						mask_box_img = self.style(mask_box_img)
-
+				if (label in self.display_target ) :
+					
 					if (detect) :    
-						frame_show[ymin:ymax, xmin:xmax] = mask_box_img
-					else :
-						frame_overlap[ymin:ymax, xmin:xmax] = mask_box_img
+						frame_show[ymin:ymax, xmin:xmax] = frame_overlap[ymin:ymax, xmin:xmax]
 
 					# Draw fill mask image
 					if (seg and isinstance(mask_map, np.ndarray)):
